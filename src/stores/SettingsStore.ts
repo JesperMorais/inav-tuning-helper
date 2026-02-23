@@ -1,14 +1,14 @@
 import { makeAutoObservable } from 'mobx'
-import { parseBetaflightOutput, ParsedSettings } from '../domain/utils/BetaflightSettingsParser'
+import { parseInavOutput, ParsedSettings } from '../domain/utils/InavSettingsParser'
 import { getCliName } from '../domain/utils/CliExport'
-import { BetaflightParameter, Axis } from '../domain/types/Analysis'
+import { InavParameter, Axis } from '../domain/types/Analysis'
 
-const STORAGE_KEY_VALUES = 'bf-imported-settings'
-const STORAGE_KEY_CLI_TEXT = 'bf-imported-cli-text'
-const STORAGE_KEY_PENDING = 'bf-pending-settings'
+const STORAGE_KEY_VALUES = 'inav-imported-settings'
+const STORAGE_KEY_CLI_TEXT = 'inav-imported-cli-text'
+const STORAGE_KEY_PENDING = 'inav-pending-settings'
 
 /**
- * Store for user-imported Betaflight settings.
+ * Store for user-imported INAV settings.
  * Maps CLI parameter names (e.g. "p_roll") to their numeric values.
  * Persists to localStorage so settings survive page reloads.
  *
@@ -60,7 +60,7 @@ export class SettingsStore {
    * Returns the parse result for display in the UI.
    */
   importFromCliOutput(text: string): ParsedSettings {
-    const result = parseBetaflightOutput(text)
+    const result = parseInavOutput(text)
     for (const [key, value] of result.values) {
       this.pendingValues.set(key, value)
     }
@@ -107,10 +107,10 @@ export class SettingsStore {
   }
 
   /**
-   * Look up an imported value by BetaflightParameter name and optional axis.
+   * Look up an imported value by InavParameter name and optional axis.
    * Translates from the app's parameter names to CLI names.
    */
-  getValue(parameter: BetaflightParameter, axis?: Axis): number | undefined {
+  getValue(parameter: InavParameter, axis?: Axis): number | undefined {
     const cliName = getCliName(parameter, axis)
     return this.importedValues.get(cliName)
   }

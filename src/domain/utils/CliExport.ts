@@ -1,68 +1,67 @@
-import { Recommendation, ParameterChange, BetaflightParameter, Axis } from '../types/Analysis'
+import { Recommendation, ParameterChange, InavParameter, Axis } from '../types/Analysis'
 import { PidProfile, FilterSettings } from '../types/LogFrame'
-import { CLI_OPTIONS } from '../../lib/betaflight/cliOptions'
+import { CLI_OPTIONS } from '../../lib/inav/cliOptions'
 
 /**
- * Maps BetaflightParameter to CLI command patterns
+ * Maps InavParameter to CLI command patterns for per-axis PID params.
+ * Note: pidFeedforward is NOT here because INAV has no mc_ff_* CLI commands —
+ * feedforward is set via the 4th value in the PID compound header and must be
+ * changed in the Configurator PID tab.
  */
 const PER_AXIS_PARAMS: Record<string, { cliPrefix: string; profileField: (axis: Axis) => string }> = {
-  pidPGain: { cliPrefix: 'p', profileField: (a) => `${a}P` },
-  pidIGain: { cliPrefix: 'i', profileField: (a) => `${a}I` },
-  pidDGain: { cliPrefix: 'd', profileField: (a) => `${a}D` },
-  pidDMinGain: { cliPrefix: 'd_min', profileField: (a) => `${a}Dmin` },
-  pidFeedforward: { cliPrefix: 'f', profileField: (a) => `${a}FF` },
+  pidPGain: { cliPrefix: 'mc_p', profileField: (a) => `${a}P` },
+  pidIGain: { cliPrefix: 'mc_i', profileField: (a) => `${a}I` },
+  pidDGain: { cliPrefix: 'mc_d', profileField: (a) => `${a}D` },
+  pidCdGain: { cliPrefix: 'mc_cd', profileField: (a) => `${a}Cd` },
 }
 
-const GLOBAL_PARAM_MAP: Partial<Record<BetaflightParameter, string>> = {
-  pidMasterMultiplier: 'simplified_master_multiplier',
-  gyroFilterMultiplier: 'simplified_gyro_filter_multiplier',
-  dtermFilterMultiplier: 'simplified_dterm_filter_multiplier',
-  dynamicNotchCount: 'dyn_notch_count',
-  dynamicNotchQ: 'dyn_notch_q',
-  dynamicNotchMinHz: 'dyn_notch_min_hz',
-  dynamicNotchMaxHz: 'dyn_notch_max_hz',
-  rpmFilterHarmonics: 'rpm_filter_harmonics',
-  rpmFilterMinHz: 'rpm_filter_min_hz',
-  feedforwardTransition: 'feedforward_transition',
-  feedforwardJitterFactor: 'feedforward_jitter_factor',
-  feedforwardSmoothFactor: 'feedforward_smooth_factor',
-  dynamicIdle: 'dshot_idle_value',
+/** Parameters that must be changed in Configurator, not via CLI */
+const CONFIGURATOR_ONLY_PARAMS: Record<string, { profileField: (axis: Axis) => string; displayName: string }> = {
+  pidFeedforward: { profileField: (a) => `${a}FF`, displayName: 'Feedforward' },
+}
+
+const GLOBAL_PARAM_MAP: Partial<Record<InavParameter, string>> = {
+  gyroMainLpfHz: 'gyro_main_lpf_hz',
+  gyroDynLpfMinHz: 'gyro_dyn_lpf_min_hz',
+  gyroDynLpfMaxHz: 'gyro_dyn_lpf_max_hz',
+  dtermLpfHz: 'dterm_lpf_hz',
+  dynamicGyroNotchEnabled: 'dynamic_gyro_notch_enabled',
+  dynamicGyroNotchQ: 'dynamic_gyro_notch_q',
+  dynamicGyroNotchMinHz: 'dynamic_gyro_notch_min_hz',
+  gyroAdaptiveFilterMinHz: 'gyro_adaptive_filter_min_hz',
+  gyroAdaptiveFilterMaxHz: 'gyro_adaptive_filter_max_hz',
   tpaRate: 'tpa_rate',
   tpaBreakpoint: 'tpa_breakpoint',
-  itermRelaxCutoff: 'iterm_relax_cutoff',
+  mcItermRelaxCutoff: 'mc_iterm_relax_cutoff',
 }
 
 /**
- * Human-readable display names for Betaflight parameters
+ * Human-readable display names for INAV parameters
  */
-export const PARAMETER_DISPLAY_NAMES: Record<BetaflightParameter, string> = {
-  pidMasterMultiplier: 'Master Multiplier',
+export const PARAMETER_DISPLAY_NAMES: Record<InavParameter, string> = {
   pidPGain: 'P Gain',
   pidIGain: 'I Gain',
   pidDGain: 'D Gain',
-  pidDMinGain: 'D Min',
+  pidCdGain: 'D-Boost',
   pidFeedforward: 'Feedforward',
-  feedforwardTransition: 'FF Transition',
-  feedforwardJitterFactor: 'FF Jitter Factor',
-  feedforwardSmoothFactor: 'FF Smooth Factor',
-  gyroFilterMultiplier: 'Gyro Filter',
-  dtermFilterMultiplier: 'D-term Filter',
-  dynamicNotchCount: 'Dyn Notch Count',
-  dynamicNotchQ: 'Dyn Notch Q',
-  dynamicNotchMinHz: 'Dyn Notch Min',
-  dynamicNotchMaxHz: 'Dyn Notch Max',
-  rpmFilterHarmonics: 'RPM Harmonics',
-  rpmFilterMinHz: 'RPM Min Hz',
-  dynamicIdle: 'Dynamic Idle',
+  gyroMainLpfHz: 'Gyro LPF',
+  gyroDynLpfMinHz: 'Gyro Dyn LPF Min',
+  gyroDynLpfMaxHz: 'Gyro Dyn LPF Max',
+  dtermLpfHz: 'D-term LPF',
+  dynamicGyroNotchEnabled: 'Dyn Notch',
+  dynamicGyroNotchQ: 'Dyn Notch Q',
+  dynamicGyroNotchMinHz: 'Dyn Notch Min',
+  gyroAdaptiveFilterMinHz: 'Adaptive Filter Min',
+  gyroAdaptiveFilterMaxHz: 'Adaptive Filter Max',
   tpaRate: 'TPA Rate',
   tpaBreakpoint: 'TPA Breakpoint',
-  itermRelaxCutoff: 'I-term Relax Cutoff',
+  mcItermRelaxCutoff: 'I-term Relax Cutoff',
 }
 
 /**
- * Get the CLI parameter name for a BetaflightParameter + axis combo
+ * Get the CLI parameter name for an InavParameter + axis combo
  */
-export function getCliName(parameter: BetaflightParameter, axis?: Axis): string {
+export function getCliName(parameter: InavParameter, axis?: Axis): string {
   const perAxis = PER_AXIS_PARAMS[parameter]
   if (perAxis && axis) {
     return `${perAxis.cliPrefix}_${axis}`
@@ -121,12 +120,12 @@ export function resolveChange(
  */
 export function getPidValue(
   pidProfile: PidProfile | undefined,
-  parameter: BetaflightParameter,
+  parameter: InavParameter,
   axis: Axis | undefined
 ): number | undefined {
   if (!pidProfile || !axis) return undefined
 
-  const mapping = PER_AXIS_PARAMS[parameter]
+  const mapping = PER_AXIS_PARAMS[parameter] ?? CONFIGURATOR_ONLY_PARAMS[parameter]
   if (!mapping) return undefined
 
   const fieldName = mapping.profileField(axis)
@@ -137,41 +136,35 @@ export function getPidValue(
  * Look up current value for a global parameter from profile/filter settings
  */
 export function getGlobalValue(
-  parameter: BetaflightParameter,
+  parameter: InavParameter,
   pidProfile?: PidProfile,
   filterSettings?: FilterSettings
 ): number | undefined {
   switch (parameter) {
-    case 'pidMasterMultiplier':
-      return pidProfile?.masterMultiplier
     case 'tpaRate':
       return pidProfile?.tpaRate
     case 'tpaBreakpoint':
       return pidProfile?.tpaBreakpoint
-    case 'dynamicIdle':
-      return pidProfile?.dynamicIdle
-    case 'dynamicNotchCount':
-      return filterSettings?.dynamicNotchCount
-    case 'dynamicNotchQ':
-      return filterSettings?.dynamicNotchQ
-    case 'dynamicNotchMinHz':
-      return filterSettings?.dynamicNotchMinHz
-    case 'dynamicNotchMaxHz':
-      return filterSettings?.dynamicNotchMaxHz
-    case 'rpmFilterHarmonics':
-      return filterSettings?.rpmFilterHarmonics
-    case 'rpmFilterMinHz':
-      return filterSettings?.rpmFilterMinHz
-    case 'gyroFilterMultiplier':
-      return filterSettings?.gyroFilterMultiplier
-    case 'dtermFilterMultiplier':
-      return filterSettings?.dtermFilterMultiplier
-    case 'itermRelaxCutoff':
-      return filterSettings?.itermRelaxCutoff
-    case 'feedforwardTransition':
-    case 'feedforwardJitterFactor':
-    case 'feedforwardSmoothFactor':
-      return undefined // Not parsed from log headers yet
+    case 'gyroMainLpfHz':
+      return filterSettings?.gyroMainLpfHz
+    case 'gyroDynLpfMinHz':
+      return filterSettings?.gyroDynLpfMinHz
+    case 'gyroDynLpfMaxHz':
+      return filterSettings?.gyroDynLpfMaxHz
+    case 'dtermLpfHz':
+      return filterSettings?.dtermLpfHz
+    case 'dynamicGyroNotchEnabled':
+      return filterSettings?.dynamicGyroNotchEnabled
+    case 'dynamicGyroNotchQ':
+      return filterSettings?.dynamicGyroNotchQ
+    case 'dynamicGyroNotchMinHz':
+      return filterSettings?.dynamicGyroNotchMinHz
+    case 'gyroAdaptiveFilterMinHz':
+      return filterSettings?.gyroAdaptiveFilterMinHz
+    case 'gyroAdaptiveFilterMaxHz':
+      return filterSettings?.gyroAdaptiveFilterMaxHz
+    case 'mcItermRelaxCutoff':
+      return filterSettings?.mcItermRelaxCutoff
     default:
       return undefined
   }
@@ -201,6 +194,20 @@ export function isNoOpChange(
   importedValues?: Map<string, number>
 ): boolean {
   const { parameter, axis, recommendedChange } = change
+
+  // Configurator-only params (e.g. feedforward) — check against PID profile
+  if (parameter in CONFIGURATOR_ONLY_PARAMS) {
+    const axes: Axis[] = axis ? [axis] : ['roll', 'pitch', 'yaw']
+    for (const a of axes) {
+      const currentValue = change.currentValue ?? getPidValue(pidProfile, parameter, a)
+      if (currentValue === undefined) return false
+      const [rawValue, resolved] = resolveChange(recommendedChange, currentValue, true)
+      if (!resolved || rawValue === null) return false
+      if (rawValue !== currentValue) return false
+    }
+    return true
+  }
+
   const isPerAxisPid = parameter in PER_AXIS_PARAMS
 
   if (isPerAxisPid) {
@@ -260,6 +267,21 @@ function generateSetCommand(
   importedValues?: Map<string, number>
 ): string {
   const { parameter, axis, recommendedChange } = change
+
+  // Configurator-only params (e.g. feedforward) can't be set via CLI
+  const confOnly = CONFIGURATOR_ONLY_PARAMS[parameter]
+  if (confOnly) {
+    const axes: Axis[] = axis ? [axis] : ['roll', 'pitch', 'yaw']
+    const lines: string[] = []
+    for (const a of axes) {
+      const currentValue = change.currentValue ?? getPidValue(pidProfile, parameter, a)
+      const [rawValue, resolved] = resolveChange(recommendedChange, currentValue, true)
+      if (resolved && rawValue !== null && (currentValue === undefined || rawValue !== currentValue)) {
+        lines.push(`# ${confOnly.displayName} ${a}: change to ${rawValue} in Configurator PID tab`)
+      }
+    }
+    return lines.join('\n')
+  }
 
   const isPerAxisPid = parameter in PER_AXIS_PARAMS
 
@@ -322,6 +344,10 @@ export function resolveAllChanges(
   for (const rec of recommendations) {
     for (const change of rec.changes) {
       const { parameter, axis, recommendedChange } = change
+
+      // Skip configurator-only params (e.g. feedforward) — they don't have CLI names
+      if (parameter in CONFIGURATOR_ONLY_PARAMS) continue
+
       const isPerAxisPid = parameter in PER_AXIS_PARAMS
 
       if (isPerAxisPid) {
@@ -361,7 +387,7 @@ export function resolveAllChanges(
 }
 
 /**
- * Generate Betaflight CLI commands from analysis recommendations
+ * Generate INAV CLI commands from analysis recommendations
  */
 export function generateCliCommands(
   recommendations: Recommendation[],
@@ -370,8 +396,8 @@ export function generateCliCommands(
   importedValues?: Map<string, number>
 ): string {
   const lines: string[] = [
-    '# Betaflight Tuning Helper - CLI Commands',
-    '# Paste these commands into the Betaflight CLI tab',
+    '# INAV Tuning Helper - CLI Commands',
+    '# Paste these commands into the INAV CLI tab',
     '',
   ]
 

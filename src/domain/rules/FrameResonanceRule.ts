@@ -100,9 +100,9 @@ export const FrameResonanceRule: TuningRule = {
         ],
         changes: [
           {
-            parameter: 'dynamicNotchMinHz',
+            parameter: 'dynamicGyroNotchMinHz',
             recommendedChange: String(Math.max(50, Math.floor(freq - 30))),
-            explanation: `Set dynamic notch minimum to cover the ${freq.toFixed(0)} Hz resonance`,
+            explanation: `Set dynamic gyro notch minimum to cover the ${freq.toFixed(0)} Hz resonance`,
           },
         ],
         expectedImprovement: 'Reduced resonant vibration with minimal latency impact',

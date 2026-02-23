@@ -3,12 +3,12 @@ import { uploadAndAnalyze } from './helpers'
 
 // Settings that match recommended parameters NOT available from the BBL header
 // (we clear these fields from metadata before importing so the modal treats them as unknown)
-const BF_SETTINGS = `
-set simplified_dterm_filter_multiplier = 120
-set rpm_filter_harmonics = 3
+const INAV_SETTINGS = `
+set dynamic_gyro_notch_enabled = 1
+set dynamic_gyro_notch_q = 250
 `.trim()
 
-const CLEARED_FIELDS = ['dtermFilterMultiplier', 'rpmFilterHarmonics'] as const
+const CLEARED_FIELDS = ['dynamicGyroNotchEnabled', 'dynamicGyroNotchQ'] as const
 
 async function clearFilterFields(page: Page) {
   await page.evaluate((fields) => {
@@ -28,7 +28,7 @@ async function pasteSettings(page: Page) {
   await page.getByTestId('import-settings-button').click()
   await page.getByTestId('paste-cli-option').click()
   await page.getByTestId('settings-paste-textarea').waitFor({ state: 'visible', timeout: 5000 })
-  await page.getByTestId('settings-paste-textarea').fill(BF_SETTINGS)
+  await page.getByTestId('settings-paste-textarea').fill(INAV_SETTINGS)
   const importBtns = page.getByTestId('import-settings-button')
   await importBtns.last().click({ force: true })
 }

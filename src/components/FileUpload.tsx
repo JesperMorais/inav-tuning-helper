@@ -452,7 +452,7 @@ export const FileUpload = observer(() => {
               </SampleLink>
             </SampleRow>
             <FormatHint>
-              Supports .bbl, .bfl, .txt, .csv (Betaflight Blackbox)
+              Supports .bbl, .bfl, .txt, .csv (INAV Blackbox)
             </FormatHint>
             <FeatureList>
               <FeatureItem>

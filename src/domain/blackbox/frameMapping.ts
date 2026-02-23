@@ -49,10 +49,10 @@ export function toLogFrame(
 
   const throttle = getField(v, fieldIndex, 'rcCommand[3]', 1000)
 
-  // Try setpoint fields first, then rcCommand (older firmware)
-  const setpointRoll = getField(v, fieldIndex, 'setpoint[0]') || getField(v, fieldIndex, 'rcCommand[0]')
-  const setpointPitch = getField(v, fieldIndex, 'setpoint[1]') || getField(v, fieldIndex, 'rcCommand[1]')
-  const setpointYaw = getField(v, fieldIndex, 'setpoint[2]') || getField(v, fieldIndex, 'rcCommand[2]')
+  // INAV logs axisRate[0-2] for target rotation rate; BF uses setpoint[0-2]
+  const setpointRoll = getField(v, fieldIndex, 'axisRate[0]') || getField(v, fieldIndex, 'setpoint[0]') || getField(v, fieldIndex, 'rcCommand[0]')
+  const setpointPitch = getField(v, fieldIndex, 'axisRate[1]') || getField(v, fieldIndex, 'setpoint[1]') || getField(v, fieldIndex, 'rcCommand[1]')
+  const setpointYaw = getField(v, fieldIndex, 'axisRate[2]') || getField(v, fieldIndex, 'setpoint[2]') || getField(v, fieldIndex, 'rcCommand[2]')
 
   // PID sum: try axisSum first, then compute from components
   const pidSumRoll = getField(v, fieldIndex, 'axisSum[0]') ||
@@ -162,14 +162,24 @@ export function toLogMetadata(
 ): LogMetadata {
   const h = headers.headerMap
 
-  const firmwareType = h.get('Firmware type') ?? 'Betaflight'
+  const rawFirmwareType = h.get('Firmware type') ?? 'INAV'
   const firmwareVersion = h.get('Firmware revision') ?? h.get('Firmware version') ?? 'Unknown'
+  // INAV logs "Cleanflight" as firmware type but includes "INAV" in the revision string
+  const firmwareType = (rawFirmwareType === 'Cleanflight' && firmwareVersion.includes('INAV'))
+    ? 'INAV'
+    : rawFirmwareType
   const firmwareRevision = h.get('Firmware date') ?? undefined
 
   const looptime = parseInt(h.get('looptime') ?? '125') || 125
-  const frameIntervalPDenom = parseInt(
-    h.get('frameIntervalPDenom') ?? h.get('P interval') ?? '1'
-  ) || 1
+  // P interval can be "1/2" (INAV) meaning log every 2nd loop, or just "2" (BF)
+  const pIntervalRaw = h.get('frameIntervalPDenom') ?? h.get('P interval') ?? '1'
+  let frameIntervalPDenom = 1
+  if (pIntervalRaw.includes('/')) {
+    const parts = pIntervalRaw.split('/')
+    frameIntervalPDenom = parseInt(parts[1]) || 1
+  } else {
+    frameIntervalPDenom = parseInt(pIntervalRaw) || 1
+  }
   const effectiveLooptime = looptime * frameIntervalPDenom
 
   const fieldNames = headers.iFieldDefs.map(d => d.name)
@@ -204,103 +214,91 @@ export function toLogMetadata(
 export { buildFieldIndex }
 
 function extractPidProfile(h: Map<string, string>): PidProfile | undefined {
-  // PID values are stored as "rollPID" or individual "p_roll" etc.
+  // INAV stores PID as "rollPID", "pitchPID", "yawPID" compound headers
+  // Also try individual mc_p_roll etc. from header keys
   const rollPID = h.get('rollPID')
   const pitchPID = h.get('pitchPID')
   const yawPID = h.get('yawPID')
 
   if (!rollPID && !pitchPID) return undefined
 
-  const parsePID = (s: string | undefined): [number, number, number] => {
-    if (!s) return [0, 0, 0]
+  const parsePID = (s: string | undefined): [number, number, number, number] => {
+    if (!s) return [0, 0, 0, 0]
     const parts = s.split(',').map(v => parseInt(v.trim()) || 0)
-    return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0]
+    return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0, parts[3] ?? 0]
   }
 
-  const [rollP, rollI, rollD] = parsePID(rollPID)
-  const [pitchP, pitchI, pitchD] = parsePID(pitchPID)
-  const [yawP, yawI, yawD] = parsePID(yawPID)
+  const [rollP, rollI, rollD, rollFFFromPid] = parsePID(rollPID)
+  const [pitchP, pitchI, pitchD, pitchFFFromPid] = parsePID(pitchPID)
+  const [yawP, yawI, yawD, yawFFFromPid] = parsePID(yawPID)
 
   const tpaRate = parseInt(h.get('tpa_rate') ?? '0') || undefined
   const tpaBreakpoint = parseInt(h.get('tpa_breakpoint') ?? '0') || undefined
-  const dynamicIdle = parseInt(h.get('dynamic_idle_min_rpm') ?? '0') || undefined
 
-  // D_min values
-  const dMinRoll = parseInt(h.get('d_min_roll') ?? '0') || undefined
-  const dMinPitch = parseInt(h.get('d_min_pitch') ?? '0') || undefined
-  const dMinYaw = parseInt(h.get('d_min_yaw') ?? '0') || undefined
+  // Feedforward: prefer 4th value from compound PID headers (INAV 8+), fall back to separate headers
+  const ffRoll = rollFFFromPid || parseInt(h.get('feedforward_roll') ?? '0') || undefined
+  const ffPitch = pitchFFFromPid || parseInt(h.get('feedforward_pitch') ?? '0') || undefined
+  const ffYaw = yawFFFromPid || parseInt(h.get('feedforward_yaw') ?? '0') || undefined
 
-  // Feedforward
-  const ffRoll = parseInt(h.get('feedforward_roll') ?? '0') || undefined
-  const ffPitch = parseInt(h.get('feedforward_pitch') ?? '0') || undefined
-  const ffYaw = parseInt(h.get('feedforward_yaw') ?? '0') || undefined
-
-  const masterMultiplier = parseInt(h.get('simplified_master_multiplier') ?? '0') || undefined
+  // D-boost (cross-axis D-term)
+  const rollCd = parseInt(h.get('mc_cd_roll') ?? '0') || undefined
+  const pitchCd = parseInt(h.get('mc_cd_pitch') ?? '0') || undefined
+  const yawCd = parseInt(h.get('mc_cd_yaw') ?? '0') || undefined
 
   return {
     rollP, rollI, rollD,
     pitchP, pitchI, pitchD,
     yawP, yawI, yawD,
-    rollDmin: dMinRoll,
-    pitchDmin: dMinPitch,
-    yawDmin: dMinYaw,
     rollFF: ffRoll,
     pitchFF: ffPitch,
     yawFF: ffYaw,
+    rollCd,
+    pitchCd,
+    yawCd,
     tpaRate,
     tpaBreakpoint,
-    dynamicIdle,
-    masterMultiplier,
   }
 }
 
 function extractFilterSettings(h: Map<string, string>): FilterSettings | undefined {
-  const gyroLpf1Cutoff = parseInt(h.get('gyro_lpf1_static_hz') ?? h.get('gyro_lowpass_hz') ?? '0') || undefined
-  const gyroLpf2Cutoff = parseInt(h.get('gyro_lpf2_static_hz') ?? h.get('gyro_lowpass2_hz') ?? '0') || undefined
-  const dtermLpf1Cutoff = parseInt(h.get('dterm_lpf1_static_hz') ?? h.get('dterm_lowpass_hz') ?? '0') || undefined
-  const dtermLpf2Cutoff = parseInt(h.get('dterm_lpf2_static_hz') ?? h.get('dterm_lowpass2_hz') ?? '0') || undefined
+  // INAV filter header keys
+  const gyroMainLpfHz = parseInt(h.get('gyro_main_lpf_hz') ?? h.get('gyro_lpf_hz') ?? h.get('gyro_lpf1_static_hz') ?? h.get('gyro_lowpass_hz') ?? '0') || undefined
+  const gyroMainLpfType = h.get('gyro_main_lpf_type') ?? h.get('gyro_lpf1_type') ?? undefined
 
-  const dynamicNotchCount = parseInt(h.get('dyn_notch_count') ?? '0') || undefined
-  const dynamicNotchQ = parseInt(h.get('dyn_notch_q') ?? '0') || undefined
-  const dynamicNotchMinHz = parseInt(h.get('dyn_notch_min_hz') ?? '0') || undefined
-  const dynamicNotchMaxHz = parseInt(h.get('dyn_notch_max_hz') ?? '0') || undefined
+  const gyroDynLpfMinHz = parseInt(h.get('gyro_dyn_lpf_min_hz') ?? '0') || undefined
+  const gyroDynLpfMaxHz = parseInt(h.get('gyro_dyn_lpf_max_hz') ?? '0') || undefined
 
-  const rpmFilterHarmonics = parseInt(h.get('rpm_filter_harmonics') ?? '0') || undefined
-  const rpmFilterMinHz = parseInt(h.get('rpm_filter_min_hz') ?? '0') || undefined
-  const rpmFilterQ = parseInt(h.get('rpm_filter_q') ?? '0') || undefined
+  const dtermLpfHz = parseInt(h.get('dterm_lpf_hz') ?? h.get('dterm_lpf1_static_hz') ?? h.get('dterm_lowpass_hz') ?? '0') || undefined
+  const dtermLpfType = h.get('dterm_lpf_type') ?? h.get('dterm_lpf1_type') ?? undefined
 
-  const gyroLpf1Type = h.get('gyro_lpf1_type') ?? undefined
-  const gyroLpf2Type = h.get('gyro_lpf2_type') ?? undefined
-  const dtermLpf1Type = h.get('dterm_lpf1_type') ?? undefined
-  const dtermLpf2Type = h.get('dterm_lpf2_type') ?? undefined
+  // INAV dynamic gyro notch
+  const dynamicGyroNotchEnabled = parseInt(h.get('dynamic_gyro_notch_enabled') ?? '0') || undefined
+  const dynamicGyroNotchQ = parseInt(h.get('dynamic_gyro_notch_q') ?? '0') || undefined
+  const dynamicGyroNotchMinHz = parseInt(h.get('dynamic_gyro_notch_min_hz') ?? '0') || undefined
 
-  const gyroFilterMultiplier = parseInt(h.get('simplified_gyro_filter_multiplier') ?? '0') || undefined
-  const dtermFilterMultiplier = parseInt(h.get('simplified_dterm_filter_multiplier') ?? '0') || undefined
-  const itermRelaxCutoff = parseInt(h.get('iterm_relax_cutoff') ?? '0') || undefined
+  // Gyro adaptive filter (INAV 9+)
+  const gyroAdaptiveFilterMinHz = parseInt(h.get('gyro_adaptive_filter_min_hz') ?? '0') || undefined
+  const gyroAdaptiveFilterMaxHz = parseInt(h.get('gyro_adaptive_filter_max_hz') ?? '0') || undefined
 
-  if (!gyroLpf1Cutoff && !dtermLpf1Cutoff && !dynamicNotchCount && !rpmFilterHarmonics
-      && !gyroFilterMultiplier && !dtermFilterMultiplier && !itermRelaxCutoff) {
+  // I-term relax
+  const mcItermRelaxCutoff = parseInt(h.get('mc_iterm_relax_cutoff') ?? h.get('iterm_relax_cutoff') ?? '0') || undefined
+
+  if (!gyroMainLpfHz && !dtermLpfHz && !dynamicGyroNotchEnabled && !mcItermRelaxCutoff) {
     return undefined
   }
 
   return {
-    gyroLpf1Type,
-    gyroLpf1Cutoff,
-    gyroLpf2Type,
-    gyroLpf2Cutoff,
-    dtermLpf1Type,
-    dtermLpf1Cutoff,
-    dtermLpf2Type,
-    dtermLpf2Cutoff,
-    dynamicNotchCount,
-    dynamicNotchQ,
-    dynamicNotchMinHz,
-    dynamicNotchMaxHz,
-    rpmFilterHarmonics,
-    rpmFilterMinHz,
-    rpmFilterQ,
-    gyroFilterMultiplier,
-    dtermFilterMultiplier,
-    itermRelaxCutoff,
+    gyroMainLpfHz,
+    gyroMainLpfType,
+    gyroDynLpfMinHz,
+    gyroDynLpfMaxHz,
+    dtermLpfHz,
+    dtermLpfType,
+    dynamicGyroNotchEnabled,
+    dynamicGyroNotchQ,
+    dynamicGyroNotchMinHz,
+    gyroAdaptiveFilterMinHz,
+    gyroAdaptiveFilterMaxHz,
+    mcItermRelaxCutoff,
   }
 }

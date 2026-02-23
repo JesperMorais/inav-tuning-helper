@@ -1,6 +1,6 @@
-# Betaflight Tuning Helper
+# INAV Tuning Helper
 
-Client-side Blackbox log analyzer. No backend — everything runs in-browser.
+Client-side Blackbox log analyzer for INAV 9.x multirotor tuning. No backend — everything runs in-browser.
 
 ## Commands
 
@@ -36,7 +36,7 @@ E2E tests use Playwright (`pnpm test`). Aim for the full suite to run in ~10 min
 - Issue dedup: temporal merge (100ms gap) then collapse by type+axis into single entry with count
 - Recommendation dedup: keyed on `parameter:axis` from `changes[]`, not title string
 - Chart uses adaptive downsampling (300–2500 pts) with FPS-based feedback
-- All Betaflight parameter names defined in `BetaflightParameter` union type in `Analysis.ts`
+- All INAV parameter names defined in `InavParameter` union type in `Analysis.ts`
 
 ## Conventions
 

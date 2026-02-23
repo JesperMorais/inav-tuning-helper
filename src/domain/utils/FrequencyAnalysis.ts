@@ -132,7 +132,7 @@ function fft(signal: number[]): Complex[] {
 
 /**
  * Calculates energy in different frequency bands
- * Bands aligned with Betaflight noise domains:
+ * Bands aligned with common noise domains:
  *   low:  0-30 Hz  (aerodynamic, I-term hunting, frame sway)
  *   mid:  30-150 Hz (PID oscillation, propwash, structural resonance)
  *   high: 150+ Hz  (motor noise, electrical noise, prop harmonics)

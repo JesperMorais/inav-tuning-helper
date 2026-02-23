@@ -1,7 +1,7 @@
 import styled from '@emotion/styled'
 import { Tooltip } from './Tooltip'
 
-const REPO_URL = 'https://github.com/Ricardo-Marques/betaflight-tuning-helper'
+const REPO_URL = 'https://github.com/iNavFlight/inav-tuning-helper'
 
 const LinkButton = styled.a`
   background: none;

@@ -97,26 +97,31 @@ export const MotorSaturationRule: TuningRule = {
       }
 
       if (saturation > 15) {
-        // Critical/High: Reduce master multiplier
+        // Critical/High: Reduce P and D gains directly
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
-          type: 'adjustMasterMultiplier',
+          type: 'decreasePID',
           priority: 9,
           confidence: issue.confidence,
-          title: 'Reduce PID master multiplier',
+          title: 'Reduce P and D gains',
           description: 'Significant motor saturation detected - PIDs are demanding more than motors can deliver',
           rationale:
-            'When motors hit max output, the flight controller loses authority. Reducing the master multiplier scales all PIDs proportionally, giving motors headroom.',
+            'When motors hit max output, the flight controller loses authority. Reducing P and D gains lowers motor demand, giving motors headroom.',
           risks: [
             'Reduced responsiveness and tracking precision',
             'May need to compensate with more aggressive flying style',
           ],
           changes: [
             {
-              parameter: 'pidMasterMultiplier',
+              parameter: 'pidPGain',
               recommendedChange: '-10%',
-              explanation: 'Reduce master multiplier by 10% to give motors headroom',
+              explanation: 'Reduce P gain to lower motor demand',
+            },
+            {
+              parameter: 'pidDGain',
+              recommendedChange: '-10%',
+              explanation: 'Reduce D gain to lower motor demand',
             },
           ],
           expectedImprovement: 'Motors stay within operating range, improved control authority',

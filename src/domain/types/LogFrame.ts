@@ -1,6 +1,6 @@
 /**
- * Represents a single frame from a Betaflight blackbox log
- * All values are in Betaflight native units unless specified
+ * Represents a single frame from an INAV blackbox log
+ * All values are in native units unless specified
  */
 export interface LogFrame {
   /** Frame timestamp in microseconds */
@@ -33,7 +33,7 @@ export interface LogFrame {
   // D-term setpoint (if available)
   dtermSetpoint?: AxisData
 
-  // Feedforward output (BF 4.1+, axisF[0-2])
+  // Feedforward output (if available)
   feedforward?: AxisData
 
   // Debug values (varies by debug mode)
@@ -66,7 +66,7 @@ export interface LogMetadata {
   /** Firmware version string */
   firmwareVersion: string
 
-  /** Firmware type (e.g., "Betaflight") */
+  /** Firmware type (e.g., "INAV") */
   firmwareType: string
 
   /** Firmware revision */
@@ -104,7 +104,7 @@ export interface LogMetadata {
 }
 
 export interface PidProfile {
-  // PID values (actual values, not simplified tuning multipliers)
+  // PID values (direct INAV values)
   rollP?: number
   rollI?: number
   rollD?: number
@@ -115,55 +115,43 @@ export interface PidProfile {
   yawI?: number
   yawD?: number
 
-  // D_min values
-  rollDmin?: number
-  pitchDmin?: number
-  yawDmin?: number
-
   // Feedforward
   rollFF?: number
   pitchFF?: number
   yawFF?: number
 
+  // D-boost (cross-axis D-term, INAV mc_cd_*)
+  rollCd?: number
+  pitchCd?: number
+  yawCd?: number
+
   // TPA (Throttle PID Attenuation)
   tpaRate?: number
   tpaBreakpoint?: number
-
-  // Dynamic idle
-  dynamicIdle?: number
-
-  // Master multiplier
-  masterMultiplier?: number
 }
 
 export interface FilterSettings {
-  // Gyro filters
-  gyroLpf1Type?: string
-  gyroLpf1Cutoff?: number
-  gyroLpf2Type?: string
-  gyroLpf2Cutoff?: number
+  // Gyro main LPF
+  gyroMainLpfHz?: number
+  gyroMainLpfType?: string
 
-  // D-term filters
-  dtermLpf1Type?: string
-  dtermLpf1Cutoff?: number
-  dtermLpf2Type?: string
-  dtermLpf2Cutoff?: number
+  // Gyro dynamic LPF
+  gyroDynLpfMinHz?: number
+  gyroDynLpfMaxHz?: number
 
-  // Dynamic notch
-  dynamicNotchCount?: number
-  dynamicNotchQ?: number
-  dynamicNotchMinHz?: number
-  dynamicNotchMaxHz?: number
+  // D-term LPF
+  dtermLpfHz?: number
+  dtermLpfType?: string
 
-  // RPM filter
-  rpmFilterHarmonics?: number
-  rpmFilterMinHz?: number
-  rpmFilterQ?: number
+  // Dynamic gyro notch
+  dynamicGyroNotchEnabled?: number  // 0 or 1
+  dynamicGyroNotchQ?: number
+  dynamicGyroNotchMinHz?: number
 
-  // Simplified filter multipliers
-  gyroFilterMultiplier?: number
-  dtermFilterMultiplier?: number
+  // Gyro adaptive filter (INAV 9+)
+  gyroAdaptiveFilterMinHz?: number
+  gyroAdaptiveFilterMaxHz?: number
 
   // I-term relax
-  itermRelaxCutoff?: number
+  mcItermRelaxCutoff?: number
 }

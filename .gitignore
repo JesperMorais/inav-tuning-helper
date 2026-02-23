@@ -28,6 +28,7 @@ dist-ssr
 
 # Test / flight log files
 *.bbl
+!test-logs/inavLog.bbl
 *.txt
 test_logs/
 

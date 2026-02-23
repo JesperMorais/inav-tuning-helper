@@ -87,16 +87,15 @@ export const DTermNoiseRule: TuningRule = {
 
   recommend: (issues: DetectedIssue[], _frames: LogFrame[], _profile?: QuadProfile, metadata?: LogMetadata): Recommendation[] => {
     const recommendations: Recommendation[] = []
-    const rpmHarmonics = metadata?.filterSettings?.rpmFilterHarmonics
+    const currentDynNotch = metadata?.filterSettings?.dynamicGyroNotchEnabled
 
     for (const issue of issues) {
       if (issue.type !== 'dtermNoise') continue
 
       // Increase D-term filtering (gated on severity — lowpass is the bluntest tool)
-      // Skip if filter multiplier already <= 80
-      const currentDtermFilter = metadata ? lookupCurrentValue('dtermFilterMultiplier', metadata) : undefined
-      if (issue.severity !== 'low' && (currentDtermFilter === undefined || currentDtermFilter > 80)) {
-        const lowpassChange = issue.severity === 'high' ? '-10' : '-5'
+      const currentDtermFilter = metadata ? lookupCurrentValue('dtermLpfHz', metadata) : undefined
+      if (issue.severity !== 'low' && (currentDtermFilter === undefined || currentDtermFilter > 50)) {
+        const lowpassChange = issue.severity === 'high' ? '-10%' : '-5%'
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
@@ -106,16 +105,16 @@ export const DTermNoiseRule: TuningRule = {
           title: 'Increase D-term filtering',
           description: 'D-term is amplifying high-frequency noise - lower the D-term filter cutoff',
           rationale:
-            'The D-term differentiates the gyro signal, amplifying high-frequency noise. Lowering the D-term filter multiplier lowers the cutoff frequency, blocking more noise before it reaches the motors.',
+            'The D-term differentiates the gyro signal, amplifying high-frequency noise. Lowering the D-term LPF cutoff frequency blocks more noise before it reaches the motors.',
           risks: [
             'Adds phase delay to the D-term response',
             'May reduce damping effectiveness at higher frequencies',
           ],
           changes: [
             {
-              parameter: 'dtermFilterMultiplier',
+              parameter: 'dtermLpfHz',
               recommendedChange: lowpassChange,
-              explanation: 'Lower D-term filter multiplier to block more high-frequency noise',
+              explanation: 'Lower D-term LPF cutoff to block more high-frequency noise',
             },
           ],
           expectedImprovement: 'Quieter motors, reduced D-term noise without losing control',
@@ -147,56 +146,30 @@ export const DTermNoiseRule: TuningRule = {
         expectedImprovement: 'Reduced motor noise and heat from D-term',
       })
 
-      // RPM filter recommendation (highest priority — least latency)
-      if (rpmHarmonics !== undefined && rpmHarmonics >= 3) {
-        // RPM already enabled at 3 harmonics — skip
-      } else if (rpmHarmonics === 0 || rpmHarmonics === undefined) {
+      // Dynamic gyro notch recommendation (targeted noise removal)
+      if (currentDynNotch === undefined || currentDynNotch === 0) {
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
-          type: 'adjustRPMFilter',
+          type: 'adjustFiltering',
           priority: 8,
           confidence: issue.confidence * 0.8,
-          title: 'Enable RPM filter',
-          description: 'RPM filter is not enabled — it removes motor noise at source',
+          title: 'Enable dynamic gyro notch filter',
+          description: 'Dynamic gyro notch is not enabled — it tracks and removes motor noise peaks',
           rationale:
-            'The RPM filter uses motor telemetry to precisely notch out motor noise harmonics. Enabling it with 3 harmonics covers the fundamental and first two overtones.',
+            'The dynamic gyro notch filter automatically tracks and removes resonant noise frequencies. Enabling it provides targeted noise removal with less latency than broader low-pass filters.',
           risks: [
-            'Requires bidirectional DShot and ESC telemetry',
-            'Too many harmonics can add latency',
+            'Adds computation overhead',
+            'May need Q-factor tuning for optimal performance',
           ],
           changes: [
             {
-              parameter: 'rpmFilterHarmonics',
-              recommendedChange: '3',
-              explanation: 'Enable RPM filter with 3 harmonics for motor noise removal',
+              parameter: 'dynamicGyroNotchEnabled',
+              recommendedChange: '1',
+              explanation: 'Enable dynamic gyro notch for targeted motor noise removal',
             },
           ],
-          expectedImprovement: 'Precise motor noise removal, allowing lower general filtering',
-        })
-      } else {
-        recommendations.push({
-          id: generateId(),
-          issueId: issue.id,
-          type: 'adjustRPMFilter',
-          priority: 8,
-          confidence: issue.confidence * 0.8,
-          title: 'Increase RPM filter harmonics',
-          description: `RPM filter has ${rpmHarmonics} harmonic(s) — increase to 3 for better coverage`,
-          rationale:
-            'The RPM filter uses motor telemetry to precisely notch out motor noise harmonics. With 3 harmonics enabled, it covers the fundamental and first two overtones.',
-          risks: [
-            'More harmonics add slight computation overhead',
-            'Marginal latency increase',
-          ],
-          changes: [
-            {
-              parameter: 'rpmFilterHarmonics',
-              recommendedChange: '3',
-              explanation: 'Set RPM filter to 3 harmonics for comprehensive motor noise removal',
-            },
-          ],
-          expectedImprovement: 'Better motor noise removal at higher harmonics',
+          expectedImprovement: 'Targeted motor noise removal, allowing less aggressive low-pass filtering',
         })
       }
     }

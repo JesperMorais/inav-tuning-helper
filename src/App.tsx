@@ -462,7 +462,7 @@ export const App = observer(() => {
               <animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite"/>
             </circle>
           </svg>
-          <HeaderTitle>Betaflight Tuning Helper</HeaderTitle>
+          <HeaderTitle>INAV Tuning Helper</HeaderTitle>
           {!isMobile && <HeaderSubtitle>Analyze blackbox logs and get actionable tuning recommendations</HeaderSubtitle>}
         </TitleRow>
         <HeaderActions>
@@ -559,9 +559,9 @@ export const App = observer(() => {
 
       {!(isMobile && isLoaded) && (
         <Footer>
-          Betaflight Tuning Helper
+          INAV Tuning Helper
           <FooterDivider>|</FooterDivider>
-          Built for Betaflight 4.4/4.5
+          Built for INAV 9.x
           <FooterDivider>|</FooterDivider>
           <WhatsNewButton onClick={uiStore.openChangelog}>
             What&apos;s New

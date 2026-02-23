@@ -3,7 +3,6 @@ import {
   lookupCurrentValue,
   withCurrentValue,
   populateCurrentValues,
-  isRpmFilterEnabled,
   isDGainZero,
   isFFZero,
 } from './SettingsLookup'
@@ -16,7 +15,7 @@ function makeMetadata(
 ): LogMetadata {
   return {
     firmwareVersion: '4.4.0',
-    firmwareType: 'Betaflight',
+    firmwareType: 'INAV',
     looptime: 4000,
     gyroRate: 8000,
     motorCount: 4,
@@ -41,27 +40,24 @@ describe('lookupCurrentValue', () => {
   })
 
   it('looks up global params from pidProfile', () => {
-    const meta = makeMetadata({ tpaRate: 65, masterMultiplier: 110 })
+    const meta = makeMetadata({ tpaRate: 65 })
     expect(lookupCurrentValue('tpaRate', meta)).toBe(65)
-    expect(lookupCurrentValue('pidMasterMultiplier', meta)).toBe(110)
   })
 
   it('looks up global params from filterSettings', () => {
     const meta = makeMetadata(undefined, {
-      gyroFilterMultiplier: 120,
-      rpmFilterHarmonics: 3,
-      itermRelaxCutoff: 15,
+      gyroMainLpfHz: 120,
+      mcItermRelaxCutoff: 15,
     })
-    expect(lookupCurrentValue('gyroFilterMultiplier', meta)).toBe(120)
-    expect(lookupCurrentValue('rpmFilterHarmonics', meta)).toBe(3)
-    expect(lookupCurrentValue('itermRelaxCutoff', meta)).toBe(15)
+    expect(lookupCurrentValue('gyroMainLpfHz', meta)).toBe(120)
+    expect(lookupCurrentValue('mcItermRelaxCutoff', meta)).toBe(15)
   })
 
   it('returns undefined when metadata has no profile or filter settings', () => {
     const meta = makeMetadata()
     expect(lookupCurrentValue('pidPGain', meta, 'roll')).toBeUndefined()
     expect(lookupCurrentValue('tpaRate', meta)).toBeUndefined()
-    expect(lookupCurrentValue('gyroFilterMultiplier', meta)).toBeUndefined()
+    expect(lookupCurrentValue('gyroMainLpfHz', meta)).toBeUndefined()
   })
 })
 
@@ -109,11 +105,11 @@ describe('withCurrentValue', () => {
 
 describe('populateCurrentValues', () => {
   it('populates multiple changes in batch', () => {
-    const meta = makeMetadata({ rollP: 45, tpaRate: 65 }, { gyroFilterMultiplier: 120 })
+    const meta = makeMetadata({ rollP: 45, tpaRate: 65 }, { gyroMainLpfHz: 120 })
     const changes: ParameterChange[] = [
       { parameter: 'pidPGain', recommendedChange: '+0.3', axis: 'roll', explanation: 'a' },
       { parameter: 'tpaRate', recommendedChange: '+10', explanation: 'b' },
-      { parameter: 'gyroFilterMultiplier', recommendedChange: '-5', explanation: 'c' },
+      { parameter: 'gyroMainLpfHz', recommendedChange: '-5', explanation: 'c' },
       { parameter: 'pidDGain', recommendedChange: '+0.1', axis: 'yaw', explanation: 'd' },
     ]
     const results = populateCurrentValues(changes, meta)
@@ -131,21 +127,6 @@ describe('populateCurrentValues', () => {
     const results = populateCurrentValues(changes, meta)
     expect(results).not.toBe(changes)
     expect(changes[0].currentValue).toBeUndefined()
-  })
-})
-
-describe('isRpmFilterEnabled', () => {
-  it('returns true when harmonics >= 1', () => {
-    expect(isRpmFilterEnabled(makeMetadata(undefined, { rpmFilterHarmonics: 3 }))).toBe(true)
-    expect(isRpmFilterEnabled(makeMetadata(undefined, { rpmFilterHarmonics: 1 }))).toBe(true)
-  })
-
-  it('returns false when harmonics is 0', () => {
-    expect(isRpmFilterEnabled(makeMetadata(undefined, { rpmFilterHarmonics: 0 }))).toBe(false)
-  })
-
-  it('returns false when filter settings absent', () => {
-    expect(isRpmFilterEnabled(makeMetadata())).toBe(false)
   })
 })
 

@@ -90,7 +90,7 @@ export const GyroNoiseRule: TuningRule = {
 
   recommend: (issues: DetectedIssue[], _frames: LogFrame[], profile?: QuadProfile, metadata?: LogMetadata): Recommendation[] => {
     const recommendations: Recommendation[] = []
-    const rpmHarmonics = metadata?.filterSettings?.rpmFilterHarmonics
+    const currentDynNotch = metadata?.filterSettings?.dynamicGyroNotchEnabled
 
     for (const issue of issues) {
       if (issue.type !== 'gyroNoise') continue
@@ -108,7 +108,7 @@ export const GyroNoiseRule: TuningRule = {
           title: `Caution: avoid over-filtering on ${profile.label}`,
           description: `${profile.label} quads have inherently higher gyro noise. Aggressive filtering adds latency that hurts the already-limited motor authority.`,
           rationale:
-            'Small quads with low-authority motors are more sensitive to filter delay. The noise levels flagged here may be normal for this frame size. Focus on RPM filtering and moderate LPF settings rather than heavy filtering.',
+            'Small quads with low-authority motors are more sensitive to filter delay. The noise levels flagged here may be normal for this frame size. Focus on dynamic notch filtering and moderate LPF settings rather than heavy filtering.',
           risks: [
             'Under-filtering can cause hot motors',
             'Need to balance noise vs latency for the specific frame',
@@ -118,64 +118,37 @@ export const GyroNoiseRule: TuningRule = {
         })
       }
 
-      // RPM filter recommendation (highest priority — least latency)
-      if (rpmHarmonics !== undefined && rpmHarmonics >= 3) {
-        // RPM already enabled at 3 harmonics — skip
-      } else if (rpmHarmonics === 0 || rpmHarmonics === undefined) {
+      // Dynamic gyro notch recommendation (targeted noise removal)
+      if (currentDynNotch === undefined || currentDynNotch === 0) {
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
-          type: 'adjustRPMFilter',
+          type: 'adjustFiltering',
           priority: 8,
           confidence: issue.confidence * 0.8,
-          title: 'Enable RPM filter',
-          description: 'RPM filter is not enabled — it removes motor noise at source',
+          title: 'Enable dynamic gyro notch filter',
+          description: 'Dynamic gyro notch is not enabled — it tracks and removes motor noise peaks',
           rationale:
-            'The RPM filter uses motor telemetry to precisely notch out motor noise harmonics. Enabling it with 3 harmonics covers the fundamental and first two overtones.',
+            'The dynamic gyro notch filter automatically tracks and removes resonant noise frequencies. Enabling it provides targeted noise removal with less latency than broader low-pass filters.',
           risks: [
-            'Requires bidirectional DShot and ESC telemetry',
-            'Too many harmonics can add latency',
+            'Adds computation overhead',
+            'May need Q-factor tuning for optimal performance',
           ],
           changes: [
             {
-              parameter: 'rpmFilterHarmonics',
-              recommendedChange: '3',
-              explanation: 'Enable RPM filter with 3 harmonics for motor noise removal',
+              parameter: 'dynamicGyroNotchEnabled',
+              recommendedChange: '1',
+              explanation: 'Enable dynamic gyro notch for targeted motor noise removal',
             },
           ],
-          expectedImprovement: 'Precise motor noise removal, allowing lower general filtering',
-        })
-      } else {
-        recommendations.push({
-          id: generateId(),
-          issueId: issue.id,
-          type: 'adjustRPMFilter',
-          priority: 8,
-          confidence: issue.confidence * 0.8,
-          title: 'Increase RPM filter harmonics',
-          description: `RPM filter has ${rpmHarmonics} harmonic(s) — increase to 3 for better coverage`,
-          rationale:
-            'The RPM filter uses motor telemetry to precisely notch out motor noise harmonics. With 3 harmonics enabled, it covers the fundamental and first two overtones.',
-          risks: [
-            'More harmonics add slight computation overhead',
-            'Marginal latency increase',
-          ],
-          changes: [
-            {
-              parameter: 'rpmFilterHarmonics',
-              recommendedChange: '3',
-              explanation: 'Set RPM filter to 3 harmonics for comprehensive motor noise removal',
-            },
-          ],
-          expectedImprovement: 'Better motor noise removal at higher harmonics',
+          expectedImprovement: 'Targeted motor noise removal, allowing less aggressive low-pass filtering',
         })
       }
 
       // Increase gyro filtering (gated on severity — lowpass is the bluntest tool)
-      // Skip if gyro filter multiplier already <= 80
-      const currentGyroFilter = metadata ? lookupCurrentValue('gyroFilterMultiplier', metadata) : undefined
-      if (issue.severity !== 'low' && (currentGyroFilter === undefined || currentGyroFilter > 80)) {
-        const lowpassChange = issue.severity === 'high' ? '-10' : '-5'
+      const currentGyroFilter = metadata ? lookupCurrentValue('gyroMainLpfHz', metadata) : undefined
+      if (issue.severity !== 'low' && (currentGyroFilter === undefined || currentGyroFilter > 50)) {
+        const lowpassChange = issue.severity === 'high' ? '-10%' : '-5%'
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
@@ -183,44 +156,44 @@ export const GyroNoiseRule: TuningRule = {
           priority: 6,
           confidence: issue.confidence,
           title: 'Increase gyro filtering',
-          description: 'Excessive gyro noise floor - lower the gyro filter cutoff for stronger filtering',
+          description: 'Excessive gyro noise floor - lower the gyro LPF cutoff for stronger filtering',
           rationale:
-            'Gyro noise passes through to PID calculations, causing motor noise and heat. Lowering the filter multiplier lowers the cutoff frequency, blocking more noise before it affects PIDs.',
+            'Gyro noise passes through to PID calculations, causing motor noise and heat. Lowering the gyro LPF cutoff frequency blocks more noise before it affects PIDs.',
           risks: [
             'Adds phase delay, reducing responsiveness',
             'May cause "mushy" feel if overdone',
           ],
           changes: [
             {
-              parameter: 'gyroFilterMultiplier',
+              parameter: 'gyroMainLpfHz',
               recommendedChange: lowpassChange,
-              explanation: 'Lower gyro filter multiplier to block more high-frequency noise',
+              explanation: 'Lower gyro LPF cutoff to block more high-frequency noise',
             },
           ],
           expectedImprovement: 'Cleaner gyro signal, quieter motors, reduced heat',
         })
       }
 
-      // Adjust dynamic notch
+      // Adjust dynamic gyro notch
       recommendations.push({
         id: generateId(),
         issueId: issue.id,
         type: 'adjustFiltering',
         priority: 7,
         confidence: issue.confidence * 0.9,
-        title: 'Adjust dynamic notch filter',
-        description: 'Dynamic notch can track and remove resonant noise peaks',
+        title: 'Adjust dynamic gyro notch filter',
+        description: 'Dynamic gyro notch can track and remove resonant noise peaks',
         rationale:
-          'The dynamic notch filter automatically tracks and removes motor resonance frequencies. Using 2 notches provides good coverage without excessive latency.',
+          'The dynamic gyro notch filter automatically tracks and removes motor resonance frequencies. Lowering the Q value widens the notch for broader noise removal.',
         risks: [
-          'Additional notches add computation time',
-          'May need Q-factor tuning for optimal performance',
+          'Lower Q adds more phase delay',
+          'May need tuning for optimal performance',
         ],
         changes: [
           {
-            parameter: 'dynamicNotchCount',
-            recommendedChange: '2',
-            explanation: 'Use 2 dynamic notches for better resonance tracking',
+            parameter: 'dynamicGyroNotchEnabled',
+            recommendedChange: '1',
+            explanation: 'Ensure dynamic gyro notch is enabled for resonance tracking',
           },
         ],
         expectedImprovement: 'Targeted removal of resonant noise peaks',

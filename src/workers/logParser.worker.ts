@@ -2,7 +2,7 @@ import { LogFrame, LogMetadata } from '../domain/types/LogFrame'
 import { parseBblBuffer } from '../domain/blackbox/index.ts'
 
 /**
- * Web Worker for parsing Betaflight blackbox logs
+ * Web Worker for parsing INAV blackbox logs
  * Supports both .bbl (binary) and .txt (CSV) formats
  */
 
@@ -52,14 +52,30 @@ export type WorkerMessage =
   | TransferChunkMessage
   | ParseErrorMessage
 
+/**
+ * Detect whether a file is binary BBL format by checking the first bytes.
+ * INAV saves blackbox logs as .TXT but they're actually binary BBL.
+ */
+async function isBinaryBbl(file: File): Promise<boolean> {
+  const header = new Uint8Array(await file.slice(0, 20).arrayBuffer())
+  // BBL files start with "H Product:Blackbox"
+  const text = String.fromCharCode(...header)
+  return text.startsWith('H Product:')
+}
+
 self.onmessage = async (e: MessageEvent) => {
   const { file, fileType } = e.data
 
   try {
-    if (fileType === 'txt' || fileType === 'csv') {
-      await parseTxtLog(file)
-    } else if (fileType === 'bbl') {
+    if (fileType === 'bbl') {
       await parseBblLog(file)
+    } else if (fileType === 'txt' || fileType === 'csv') {
+      // INAV saves .TXT files that are actually binary BBL — sniff the content
+      if (await isBinaryBbl(file)) {
+        await parseBblLog(file)
+      } else {
+        await parseTxtLog(file)
+      }
     } else {
       throw new Error('Unsupported file type')
     }
@@ -73,7 +89,7 @@ self.onmessage = async (e: MessageEvent) => {
 }
 
 /**
- * Parse text-based Betaflight blackbox log (CSV format)
+ * Parse text-based INAV blackbox log (CSV format)
  */
 async function parseTxtLog(file: File): Promise<void> {
   postProgress(0, 'Reading file...')
@@ -90,13 +106,13 @@ async function parseTxtLog(file: File): Promise<void> {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim()
     if (line.startsWith('H ')) {
-      // Betaflight native format: Header line with "H " prefix
+      // INAV native format: Header line with "H " prefix
       const parts = line.substring(2).split(':')
       if (parts.length >= 2) {
         headerMap.set(parts[0].trim(), parts.slice(1).join(':').trim())
       }
     } else if (line.startsWith('F ')) {
-      // Betaflight native format: Field name line with "F " prefix
+      // INAV native format: Field name line with "F " prefix
       headerEndIndex = i
       break
     } else if (line.startsWith('"')) {
@@ -221,7 +237,7 @@ async function parseTxtLog(file: File): Promise<void> {
   const hasGyro = gyroRollIdx >= 0
   if (!hasTime || !hasGyro) {
     throw new Error(
-      "This doesn't appear to be a Betaflight blackbox log. Expected fields like 'time', 'gyroADC[0]' were not found. Please upload a .bbl file from your flight controller or a .txt/.csv export from Blackbox Explorer."
+      "This doesn't appear to be a INAV blackbox log. Expected fields like 'time', 'gyroADC[0]' were not found. Please upload a .bbl file from your flight controller or a .txt/.csv export from Blackbox Explorer."
     )
   }
 
@@ -334,7 +350,7 @@ async function parseTxtLog(file: File): Promise<void> {
   // Update metadata with actual frame count and duration
   metadata.frameCount = frames.length
 
-  // Betaflight CSV exports always store time in microseconds - no conversion needed.
+  // INAV CSV exports always store time in microseconds - no conversion needed.
 
   // Zero-base timestamps so chart starts at 0
   if (frames.length > 0) {
@@ -352,7 +368,7 @@ async function parseTxtLog(file: File): Promise<void> {
 }
 
 /**
- * Parse binary Betaflight blackbox log (.bbl / .bfl)
+ * Parse binary INAV blackbox log (.bbl / .bfl)
  * Uses native TypeScript parser (no WASM dependency).
  */
 async function parseBblLog(file: File): Promise<void> {
@@ -380,8 +396,8 @@ function extractMetadata(
   lines: string[],
   headerEndIndex: number
 ): LogMetadata {
-  // Handle both Betaflight native format and CSV export format
-  const firmwareType = headerMap.get('Firmware type') ?? headerMap.get('firmwareType') ?? 'Betaflight'
+  // Handle both INAV native format and CSV export format
+  const firmwareType = headerMap.get('Firmware type') ?? headerMap.get('firmwareType') ?? 'INAV'
   const firmwareVersion = headerMap.get('Firmware revision') ?? headerMap.get('firmwareVersion') ?? headerMap.get('firmware') ?? 'Unknown'
   const looptimeStr = headerMap.get('looptime') ?? '125'
   const looptime = parseInt(looptimeStr) || 125 // microseconds

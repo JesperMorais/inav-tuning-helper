@@ -2,22 +2,22 @@ import { test, expect, Page } from '@playwright/test'
 import { uploadAndAnalyze } from './helpers'
 import { extractIssues, VALID_CLI_PARAMS } from './data-verification-helpers'
 
-const BF_SETTINGS = `
-set p_roll = 45
-set i_roll = 80
-set d_roll = 40
-set p_pitch = 47
-set i_pitch = 84
-set d_pitch = 46
-set p_yaw = 45
-set i_yaw = 80
+const INAV_SETTINGS = `
+set mc_p_roll = 30
+set mc_i_roll = 82
+set mc_d_roll = 37
+set mc_p_pitch = 33
+set mc_i_pitch = 90
+set mc_d_pitch = 41
+set mc_p_yaw = 39
+set mc_i_yaw = 84
 `.trim()
 
 async function importAndAcceptSettings(page: Page) {
   await page.getByTestId('import-settings-button').click()
   await page.getByTestId('paste-cli-option').click()
   await page.getByTestId('settings-paste-textarea').waitFor({ state: 'visible', timeout: 5000 })
-  await page.getByTestId('settings-paste-textarea').fill(BF_SETTINGS)
+  await page.getByTestId('settings-paste-textarea').fill(INAV_SETTINGS)
   await page.getByTestId('import-settings-button').last().click({ force: true })
   await page.getByTestId('settings-review-modal').waitFor({ state: 'visible', timeout: 5000 })
   await page.getByTestId('settings-review-accept').click()
@@ -70,7 +70,7 @@ test.describe('Data Verification — Recommendations & CLI', () => {
     }
   })
 
-  test('CLI commands reference only valid Betaflight parameters', async ({ page }) => {
+  test('CLI commands reference only valid INAV parameters', async ({ page }) => {
     // Import settings to enable accept tune
     await importAndAcceptSettings(page)
 
@@ -153,6 +153,14 @@ test.describe('Data Verification — Recommendations & CLI', () => {
     // Switch to Fixes tab to get recommendation titles
     await page.getByTestId('right-panel').locator('button').filter({ hasText: /^Fixes/ }).click()
     const recSection = page.getByTestId('recommendations-section')
+
+    // Expand hardware section if present (collapsed by default)
+    const hwToggle = recSection.locator('button').filter({ hasText: /Hardware issues/ })
+    if (await hwToggle.count() > 0) {
+      await hwToggle.click()
+      await page.waitForTimeout(200)
+    }
+
     const recCards = recSection.locator('[data-rec-id]')
     const recTitles: string[] = []
     const recCount = await recCards.count()

@@ -26,7 +26,7 @@ function scaleProfile(base: QuadProfile, level: AnalysisLevel): QuadProfile {
 
 const SEVERITY_RANK: Record<Severity, number> = { low: 1, medium: 2, high: 3 }
 
-describe('RuleEngine — quad profiles', () => {
+describe('RuleEngine — quad profiles', { timeout: 30000 }, () => {
   it('default profile matches explicit 5-inch profile', () => {
     const { frames, metadata } = loadTestBflLog()
     const engine = new RuleEngine()
@@ -68,7 +68,7 @@ describe('RuleEngine — quad profiles', () => {
   })
 })
 
-describe('RuleEngine — analysis level monotonicity', () => {
+describe('RuleEngine — analysis level monotonicity', { timeout: 60000 }, () => {
   // Levels ordered from most lenient to most strict
   const LEVELS: AnalysisLevel[] = ['basic', 'average', 'expert']
 

@@ -113,7 +113,7 @@ export class FlashDownloadStore {
       await drainSerialBuffer(conn)
 
       // Handshake: send a lightweight command to confirm the FC is in MSP mode
-      // and clear any remaining boot noise. This is what Betaflight Configurator does.
+      // and clear any remaining boot noise. This is what INAV Configurator does.
       await sendMspCommand(conn, MSP_API_VERSION)
 
       runInAction(() => { this.status = 'reading_summary' })
@@ -382,7 +382,7 @@ export class FlashDownloadStore {
 function describeFlashError(err: unknown): string {
   if (err instanceof DOMException) {
     if (err.name === 'NetworkError') {
-      return 'Port in use. Close Betaflight Configurator and try again.'
+      return 'Port in use. Close INAV Configurator and try again.'
     }
     if (err.name === 'SecurityError') {
       return 'Serial access denied. Check your browser permissions.'

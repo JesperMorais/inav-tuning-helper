@@ -3,8 +3,11 @@ import { PidProfile, FilterSettings } from '../types/LogFrame'
 import { getCliName, getPidValue, getGlobalValue } from './CliExport'
 
 const PER_AXIS_PARAMS = new Set([
-  'pidPGain', 'pidIGain', 'pidDGain', 'pidDMinGain', 'pidFeedforward',
+  'pidPGain', 'pidIGain', 'pidDGain', 'pidCdGain',
 ])
+
+/** Params with no CLI equivalent — always known from log, never need `get` */
+const CONFIGURATOR_ONLY = new Set(['pidFeedforward'])
 
 const ALL_AXES: Axis[] = ['roll', 'pitch', 'yaw']
 
@@ -24,6 +27,8 @@ export function generateGetScript(
   for (const rec of recommendations) {
     for (const change of rec.changes) {
       const { parameter, axis } = change
+
+      if (CONFIGURATOR_ONLY.has(parameter)) continue
 
       if (PER_AXIS_PARAMS.has(parameter)) {
         const axes = axis ? [axis] : ALL_AXES
@@ -45,7 +50,7 @@ export function generateGetScript(
   if (needed.size === 0) return ''
 
   const lines = [
-    '# Paste into Betaflight CLI, then copy the output back',
+    '# Paste into INAV CLI, then copy the output back',
     '',
     ...Array.from(needed).sort().map(name => `get ${name}`),
   ]

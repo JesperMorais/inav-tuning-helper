@@ -99,42 +99,17 @@ export const BouncebackRule: TuningRule = {
       // FF-aware classification: use actual FF data when available
       if (hasFfData && feedforwardRMS > overshoot * 0.3 && !ffIsZero) {
         // FF data available and FF is high (contributing >30% of overshoot magnitude)
-        // Primary: lower feedforward transition to reduce FF during stick deceleration
+        // Reduce FF gain to lower overshoot on stick release
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
           type: 'adjustFeedforward',
           priority: 9,
           confidence: issue.confidence,
-          title: `Reduce FF transition on ${issue.axis}`,
-          description: 'Feedforward is driving overshoot on stick release — reduce transition to taper FF during deceleration',
-          rationale:
-            `Feedforward RMS (${feedforwardRMS.toFixed(1)}°/s) is significant relative to the ${overshoot.toFixed(1)}° overshoot. Lowering feedforward_transition reduces FF authority during stick deceleration without hurting active-flight response.`,
-          risks: [
-            'May slightly reduce responsiveness on fast direction changes',
-            'Only affects stick deceleration phase',
-          ],
-          changes: [
-            {
-              parameter: 'feedforwardTransition',
-              recommendedChange: '25',
-              explanation: 'Lower FF transition to reduce overshoot on stick release',
-            },
-          ],
-          expectedImprovement: 'Cleaner stick stops with maintained tracking during active flying',
-        })
-
-        // Secondary: reduce FF gain as fallback
-        recommendations.push({
-          id: generateId(),
-          issueId: issue.id,
-          type: 'adjustFeedforward',
-          priority: 7,
-          confidence: issue.confidence * 0.85,
           title: `Reduce Feedforward on ${issue.axis}`,
-          description: 'Lower feedforward gain as secondary measure if transition alone is insufficient',
+          description: 'Feedforward is driving overshoot on stick release — reduce FF gain to lower overshoot',
           rationale:
-            'If reducing feedforward transition alone doesn\'t resolve the overshoot, reducing the FF gain directly lowers the feedforward contribution across all stick movements.',
+            `Feedforward RMS (${feedforwardRMS.toFixed(1)}°/s) is significant relative to the ${overshoot.toFixed(1)}° overshoot. Reducing the FF gain directly lowers the feedforward contribution, preventing overshoot on stick release.`,
           risks: [
             'May slightly increase tracking lag during active flying',
             'May feel less responsive on initial stick inputs',
@@ -147,7 +122,7 @@ export const BouncebackRule: TuningRule = {
               explanation: 'Reduce feedforward gain to prevent overshoot on stick release',
             },
           ],
-          expectedImprovement: 'Reduced overshoot with moderate tracking trade-off',
+          expectedImprovement: 'Cleaner stick stops with maintained tracking during active flying',
         })
       } else if (overshoot > 50 && settlingTime < 100) {
         // Large overshoot with fast settling - P is too high, overshooting target
@@ -203,24 +178,24 @@ export const BouncebackRule: TuningRule = {
           expectedImprovement: 'Cleaner stick stops without sacrificing much tracking',
         })
       } else if (settlingTime > 150 && !dIsZero) {
-        // Slow settling - underdamped, need more D or increase D_min
+        // Slow settling - underdamped, need more D
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
           type: 'increasePID',
           priority: 7,
           confidence: issue.confidence,
-          title: `Increase D_min on ${issue.axis}`,
-          description: 'Slow settling indicates insufficient damping at low throttle',
+          title: `Increase D on ${issue.axis}`,
+          description: 'Slow settling indicates insufficient damping',
           rationale:
-            'D_min provides damping during slow movements and recovery. Increasing it improves settling without adding noise at high throttle.',
+            'D gain provides damping during movements and recovery. Increasing it improves settling time after stick release.',
           risks: ['May slightly increase motor heat', 'Could amplify gyro noise if too high'],
           changes: [
             {
-              parameter: 'pidDMinGain',
+              parameter: 'pidDGain',
               recommendedChange: '+0.2',
               axis: issue.axis,
-              explanation: 'Increase D_min to improve damping during recovery phase',
+              explanation: 'Increase D gain to improve damping during recovery phase',
             },
           ],
           expectedImprovement: 'Faster settling with less oscillation after stick release',

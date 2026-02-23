@@ -1,27 +1,23 @@
 import { Page } from '@playwright/test'
 
 /**
- * Known valid Betaflight CLI parameter names that our CLI export can produce.
+ * Known valid INAV CLI parameter names that our CLI export can produce.
  * Derived from CliExport.ts PER_AXIS_PARAMS and GLOBAL_PARAM_MAP.
  */
 export const VALID_CLI_PARAMS = new Set([
-  // Per-axis PID (p/i/d/d_min/f × roll/pitch/yaw)
-  'p_roll', 'p_pitch', 'p_yaw',
-  'i_roll', 'i_pitch', 'i_yaw',
-  'd_roll', 'd_pitch', 'd_yaw',
-  'd_min_roll', 'd_min_pitch', 'd_min_yaw',
-  'f_roll', 'f_pitch', 'f_yaw',
+  // Per-axis PID (mc_p/mc_i/mc_d/mc_cd/mc_ff × roll/pitch/yaw)
+  'mc_p_roll', 'mc_p_pitch', 'mc_p_yaw',
+  'mc_i_roll', 'mc_i_pitch', 'mc_i_yaw',
+  'mc_d_roll', 'mc_d_pitch', 'mc_d_yaw',
+  'mc_cd_roll', 'mc_cd_pitch', 'mc_cd_yaw',
   // Global
-  'simplified_master_multiplier',
-  'simplified_gyro_filter_multiplier',
-  'simplified_dterm_filter_multiplier',
-  'dyn_notch_count', 'dyn_notch_q',
-  'dyn_notch_min_hz', 'dyn_notch_max_hz',
-  'rpm_filter_harmonics', 'rpm_filter_min_hz',
-  'feedforward_transition', 'feedforward_jitter_factor', 'feedforward_smooth_factor',
-  'dshot_idle_value',
+  'gyro_main_lpf_hz',
+  'gyro_dyn_lpf_min_hz', 'gyro_dyn_lpf_max_hz',
+  'dterm_lpf_hz',
+  'dynamic_gyro_notch_enabled', 'dynamic_gyro_notch_q', 'dynamic_gyro_notch_min_hz',
+  'gyro_adaptive_filter_min_hz', 'gyro_adaptive_filter_max_hz',
   'tpa_rate', 'tpa_breakpoint',
-  'iterm_relax_cutoff',
+  'mc_iterm_relax_cutoff',
 ])
 
 /**

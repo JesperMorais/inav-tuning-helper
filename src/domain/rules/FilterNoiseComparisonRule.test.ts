@@ -56,12 +56,12 @@ function makeWindow(frames: LogFrame[]): AnalysisWindow {
 }
 
 function makeMetadata(
-  gyroLpf1Cutoff?: number,
-  dtermLpf1Cutoff?: number,
+  gyroMainLpfHz?: number,
+  dtermLpfHz?: number,
 ): LogMetadata {
   return {
     firmwareVersion: '4.4.0',
-    firmwareType: 'Betaflight',
+    firmwareType: 'INAV',
     looptime: 4000,
     gyroRate: 8000,
     motorCount: 4,
@@ -69,8 +69,8 @@ function makeMetadata(
     frameCount: 256,
     duration: 60,
     filterSettings: {
-      gyroLpf1Cutoff,
-      dtermLpf1Cutoff,
+      gyroMainLpfHz,
+      dtermLpfHz,
     },
   }
 }
@@ -174,8 +174,8 @@ describe('FilterNoiseComparisonRule', () => {
       }
       const recs = FilterNoiseComparisonRule.recommend([issue], [], DEFAULT_PROFILE)
       expect(recs.length).toBe(1)
-      expect(recs[0].changes[0].parameter).toBe('gyroFilterMultiplier')
-      expect(recs[0].changes[0].recommendedChange).toMatch(/^\+\d+$/)
+      expect(recs[0].changes[0].parameter).toBe('gyroMainLpfHz')
+      expect(recs[0].changes[0].recommendedChange).toMatch(/^\+\d+%?$/)
     })
 
     it('generates lower-filter recommendation for under-filtering', () => {
@@ -196,8 +196,8 @@ describe('FilterNoiseComparisonRule', () => {
       }
       const recs = FilterNoiseComparisonRule.recommend([issue], [], DEFAULT_PROFILE)
       expect(recs.length).toBe(1)
-      expect(recs[0].changes[0].parameter).toBe('dtermFilterMultiplier')
-      expect(recs[0].changes[0].recommendedChange).toMatch(/^-\d+$/)
+      expect(recs[0].changes[0].parameter).toBe('dtermLpfHz')
+      expect(recs[0].changes[0].recommendedChange).toMatch(/^-\d+%?$/)
     })
 
     it('ignores non-filterMismatch issues', () => {

@@ -230,7 +230,7 @@ export class SerialStore {
 function describeError(err: unknown): string {
   if (err instanceof DOMException) {
     if (err.name === 'NetworkError') {
-      return 'Port in use. Close Betaflight Configurator and try again.'
+      return 'Port in use. Close INAV Configurator and try again.'
     }
     if (err.name === 'SecurityError') {
       return 'Serial access denied. Check your browser permissions.'

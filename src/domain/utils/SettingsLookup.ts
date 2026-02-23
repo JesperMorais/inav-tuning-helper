@@ -1,13 +1,13 @@
-import { ParameterChange, BetaflightParameter, Axis } from '../types/Analysis'
+import { ParameterChange, InavParameter, Axis } from '../types/Analysis'
 import { LogMetadata } from '../types/LogFrame'
 import { getPidValue, getGlobalValue } from './CliExport'
 
 /**
- * Look up the current value of any BetaflightParameter from log metadata.
+ * Look up the current value of any InavParameter from log metadata.
  * Delegates to getPidValue for per-axis PID params and getGlobalValue for everything else.
  */
 export function lookupCurrentValue(
-  parameter: BetaflightParameter,
+  parameter: InavParameter,
   metadata: LogMetadata,
   axis?: Axis
 ): number | undefined {
@@ -43,12 +43,6 @@ export function populateCurrentValues(
 // ---------------------------------------------------------------------------
 // Convenience checks for common setting queries
 // ---------------------------------------------------------------------------
-
-/** True when the RPM filter is enabled (harmonics >= 1) */
-export function isRpmFilterEnabled(metadata: LogMetadata): boolean {
-  const h = metadata.filterSettings?.rpmFilterHarmonics
-  return h !== undefined && h >= 1
-}
 
 /** True when D gain is zero for the given axis */
 export function isDGainZero(metadata: LogMetadata, axis: Axis): boolean {

@@ -204,7 +204,7 @@ export const TrackingQualityRule: TuningRule = {
       if (rec) recommendations.push(rec)
     }
 
-    // If multiple axes have high errors, suggest master multiplier
+    // If multiple axes have high errors, suggest increasing P and D gains globally
     const highErrorAxes = Array.from(issuesByAxis.values()).filter(axisIssues =>
       axisIssues.some(
         issue =>
@@ -226,13 +226,13 @@ export const TrackingQualityRule: TuningRule = {
       recommendations.push({
         id: generateId(),
         issueId: worstGlobalIssue.id,
-        type: 'adjustMasterMultiplier',
+        type: 'increasePID',
         priority: 8,
         confidence: 0.75,
-        title: 'Increase Master Multiplier',
+        title: 'Increase P and D gains globally',
         description: 'Widespread tracking issues across multiple axes',
         rationale:
-          'When multiple axes show poor tracking, the quad is generally under-tuned. Master multiplier scales all PIDs proportionally for global improvement.',
+          'When multiple axes show poor tracking, the quad is generally under-tuned. Increasing P and D gains on all axes improves overall tracking performance.',
         risks: [
           'Affects all axes - may over-tune axes that are already good',
           'Increases motor heat and battery consumption',
@@ -240,9 +240,14 @@ export const TrackingQualityRule: TuningRule = {
         ],
         changes: [
           {
-            parameter: 'pidMasterMultiplier',
+            parameter: 'pidPGain',
             recommendedChange: '+5%',
-            explanation: 'Global PID increase to improve overall tracking performance',
+            explanation: 'Global P gain increase to improve overall tracking performance',
+          },
+          {
+            parameter: 'pidDGain',
+            recommendedChange: '+5%',
+            explanation: 'Global D gain increase to improve damping across all axes',
           },
         ],
         expectedImprovement: 'Improved tracking quality across all axes during active flight',

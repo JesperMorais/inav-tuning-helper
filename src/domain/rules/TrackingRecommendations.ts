@@ -11,11 +11,11 @@ export function generateAxisRecommendation(
   worstIssue: DetectedIssue,
   metadata?: LogMetadata,
 ): Recommendation | undefined {
-  // Skip filter raise if multiplier already >= 140
+  // Skip filter raise if cutoffs are already high (>= 200 Hz)
   if (worstIssue.type === 'overFiltering' && metadata) {
-    const gyroMult = metadata.filterSettings?.gyroFilterMultiplier
-    const dtermMult = metadata.filterSettings?.dtermFilterMultiplier
-    if (gyroMult !== undefined && gyroMult >= 140 && dtermMult !== undefined && dtermMult >= 140) {
+    const gyroLpf = metadata.filterSettings?.gyroMainLpfHz
+    const dtermLpf = metadata.filterSettings?.dtermLpfHz
+    if (gyroLpf !== undefined && gyroLpf >= 200 && dtermLpf !== undefined && dtermLpf >= 200) {
       return undefined
     }
   }
@@ -50,14 +50,14 @@ function generateAxisRecommendationInner(
       ],
       changes: [
         {
-          parameter: 'gyroFilterMultiplier',
-          recommendedChange: '+10',
-          explanation: `Raise gyro filter multiplier to reduce ${worstIssue.metrics.phaseLagMs?.toFixed(1) ?? ''}ms phase lag`,
+          parameter: 'gyroMainLpfHz',
+          recommendedChange: '+10%',
+          explanation: `Raise gyro LPF cutoff to reduce ${worstIssue.metrics.phaseLagMs?.toFixed(1) ?? ''}ms phase lag`,
         },
         {
-          parameter: 'dtermFilterMultiplier',
-          recommendedChange: '+10',
-          explanation: 'Raise D-term filter multiplier to reduce filtering delay',
+          parameter: 'dtermLpfHz',
+          recommendedChange: '+10%',
+          explanation: 'Raise D-term LPF cutoff to reduce filtering delay',
         },
       ],
       expectedImprovement: 'Reduced phase lag, more responsive tracking with maintained noise levels',

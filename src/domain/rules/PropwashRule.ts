@@ -4,7 +4,7 @@ import { LogFrame, LogMetadata } from '../types/LogFrame'
 import { QuadProfile } from '../types/QuadProfile'
 import { detectPropwash, deriveSampleRate } from '../utils/SignalAnalysis'
 import { generateId } from '../utils/generateId'
-import { populateCurrentValues, lookupCurrentValue } from '../utils/SettingsLookup'
+import { populateCurrentValues } from '../utils/SettingsLookup'
 
 /**
  * Detects propwash oscillations during throttle drops
@@ -82,9 +82,7 @@ export const PropwashRule: TuningRule = {
     for (const issue of issues) {
       if (issue.type !== 'propwash') continue
 
-      const frequency = issue.metrics.frequency || 0
       const amplitude = issue.metrics.amplitude || 0
-      const dtermActivity = issue.metrics.dtermActivity || 0
 
       // Add iterm_relax_cutoff recommendation for profiles that prefer it
       if (profile?.overrides.propwashPreferItermRelax && profile.overrides.itermRelaxCutoff > 0) {
@@ -104,7 +102,7 @@ export const PropwashRule: TuningRule = {
           ],
           changes: [
             {
-              parameter: 'itermRelaxCutoff',
+              parameter: 'mcItermRelaxCutoff',
               recommendedChange: String(profile.overrides.itermRelaxCutoff),
               explanation: `Set iterm_relax_cutoff to ${profile.overrides.itermRelaxCutoff} (recommended for ${profile.label} quads)`,
             },
@@ -121,119 +119,43 @@ export const PropwashRule: TuningRule = {
           type: 'increasePID',
           priority: 9,
           confidence: issue.confidence,
-          title: `Increase D_min on ${issue.axis}`,
+          title: `Increase D gain on ${issue.axis}`,
           description: 'Severe propwash requires stronger low-throttle damping',
           rationale:
-            'D_min provides damping specifically at low throttle where propwash occurs. Higher D_min resists oscillations from disturbed air.',
+            'D gain provides damping specifically at low throttle where propwash occurs. Higher D gain resists oscillations from disturbed air.',
           risks: [
             'May increase motor temperature',
             'Could amplify noise if gyro filtering insufficient',
           ],
           changes: [
             {
-              parameter: 'pidDMinGain',
+              parameter: 'pidDGain',
               recommendedChange: '+0.4',
               axis: issue.axis,
-              explanation: 'Significant D_min increase for propwash resistance',
+              explanation: 'Significant D gain increase for propwash resistance',
             },
           ],
           expectedImprovement: 'Reduced oscillation amplitude during throttle drops by 40-60%',
         })
-
-        // Skip dynamic idle increase if already >= 40
-        const currentIdle = metadata ? lookupCurrentValue('dynamicIdle', metadata) : undefined
-        if (currentIdle === undefined || currentIdle < 40) {
-          recommendations.push({
-            id: generateId(),
-            issueId: issue.id,
-            type: 'adjustDynamicIdle',
-            priority: 8,
-            confidence: 0.85,
-            title: 'Increase Dynamic Idle',
-            description: 'Higher idle speed reduces propwash susceptibility',
-            rationale:
-              'Dynamic idle keeps motors spinning faster at low throttle, maintaining authority and reducing propwash effects.',
-            risks: [
-              'Slightly increased amp draw at low throttle',
-              'May feel less "floaty" in descents',
-            ],
-            changes: [
-              {
-                parameter: 'dynamicIdle',
-                recommendedChange: '+3',
-                explanation: 'Increase from typical 30 to 33 for better low-throttle authority',
-              },
-            ],
-            expectedImprovement:
-              'More stable descents with better motor authority in disturbed air',
-          })
-        }
-      } else if (frequency > 30 && dtermActivity > 100) {
-        // High-frequency propwash with D-term struggling — RPM filter-aware
-        const rpmHarmonics = metadata?.filterSettings?.rpmFilterHarmonics
-        if (rpmHarmonics === undefined || rpmHarmonics === 0) {
-          recommendations.push({
-            id: generateId(),
-            issueId: issue.id,
-            type: 'adjustFiltering',
-            priority: 7,
-            confidence: 0.75,
-            title: 'Enable RPM filter',
-            description: 'RPM filter is not enabled — it removes motor noise that interacts with propwash',
-            rationale:
-              'RPM filter removes motor noise that can interact with propwash. Enabling it with 3 harmonics improves D-term effectiveness.',
-            risks: ['Requires ESC telemetry to be working', 'May need firmware update'],
-            changes: [
-              {
-                parameter: 'rpmFilterHarmonics',
-                recommendedChange: '3',
-                explanation: 'Enable RPM filter with 3 harmonics for motor noise filtering',
-              },
-            ],
-            expectedImprovement: 'Cleaner D-term response allowing more effective damping',
-          })
-        } else if (rpmHarmonics < 3) {
-          recommendations.push({
-            id: generateId(),
-            issueId: issue.id,
-            type: 'adjustFiltering',
-            priority: 7,
-            confidence: 0.75,
-            title: 'Increase RPM filter harmonics',
-            description: `RPM filter has ${rpmHarmonics} harmonic(s) — increase to 3 for better propwash handling`,
-            rationale:
-              'RPM filter removes motor noise that can interact with propwash. More harmonics provide better coverage of motor noise overtones.',
-            risks: ['Marginal latency increase', 'May need firmware update'],
-            changes: [
-              {
-                parameter: 'rpmFilterHarmonics',
-                recommendedChange: '3',
-                explanation: 'Set RPM filter to 3 harmonics for comprehensive filtering',
-              },
-            ],
-            expectedImprovement: 'Cleaner D-term response allowing more effective damping',
-          })
-        }
-        // If RPM already at 3 harmonics, skip — propwash issue is elsewhere
       } else {
-        // Moderate propwash - standard D_min increase
+        // Moderate propwash - standard D gain increase
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
           type: 'increasePID',
           priority: 6,
           confidence: issue.confidence,
-          title: `Increase D_min on ${issue.axis}`,
-          description: 'Moderate propwash responds well to D_min increase',
+          title: `Increase D gain on ${issue.axis}`,
+          description: 'Moderate propwash responds well to D gain increase',
           rationale:
-            'D_min specifically targets low-throttle damping without affecting high-speed flight.',
+            'D gain specifically targets low-throttle damping without affecting high-speed flight.',
           risks: ['Slight increase in motor heat'],
           changes: [
             {
-              parameter: 'pidDMinGain',
+              parameter: 'pidDGain',
               recommendedChange: '+0.2',
               axis: issue.axis,
-              explanation: 'Moderate D_min boost for improved propwash handling',
+              explanation: 'Moderate D gain boost for improved propwash handling',
             },
           ],
           expectedImprovement: 'Smoother throttle drops with less visible oscillation',
@@ -259,7 +181,7 @@ export const PropwashRule: TuningRule = {
           ],
           changes: [
             {
-              parameter: 'itermRelaxCutoff',
+              parameter: 'mcItermRelaxCutoff',
               recommendedChange: '10',
               explanation: 'Lower iterm_relax_cutoff to reduce I-term contribution to propwash',
             },

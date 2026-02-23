@@ -71,7 +71,7 @@ export function SafetyWarning(): React.ReactElement {
       </Subtitle>
       <BulletList>
         <li><strong>Do your own research</strong> — cross-reference every suggestion with trusted sources before applying</li>
-        <li>Before making changes, <StyledLink href="https://www.betaflight.com/docs/development/Cli#dump-using-cli" target="_blank" rel="noopener noreferrer">save a <strong>CLI dump</strong></StyledLink> so you can restore your settings</li>
+        <li>Before making changes, <StyledLink href="https://github.com/iNavFlight/inav/wiki/INAV-CLI" target="_blank" rel="noopener noreferrer">save a <strong>CLI dump</strong></StyledLink> so you can restore your settings</li>
         <li>Test tuning changes <strong>outdoors in a wide open area</strong>, away from people and property</li>
         <li>Keep a safe distance and <strong>be ready to disarm</strong> at any moment</li>
         <li>Make <strong>small, incremental changes</strong></li>

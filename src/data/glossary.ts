@@ -41,7 +41,7 @@ export const GLOSSARY_ENTRIES: GlossaryEntry[] = [
     term: 'ms',
     category: 'units',
     explanation: 'Milliseconds  - thousandths of a second.',
-    detail: 'Betaflight PID loop runs every 0.125\u20131 ms. RC link latency is typically 5\u201325 ms.',
+    detail: 'INAV PID loop runs every 0.125\u20131 ms. RC link latency is typically 5\u201325 ms.',
   },
 
   // Abbreviations
@@ -78,7 +78,7 @@ export const GLOSSARY_ENTRIES: GlossaryEntry[] = [
     term: 'RPM',
     category: 'abbreviations',
     explanation: 'Revolutions Per Minute  - how fast the motors are spinning.',
-    detail: 'Betaflight can use RPM data to place notch filters exactly on motor noise frequencies.',
+    detail: 'Motor RPM data can be used to identify vibration sources at specific frequencies.',
   },
   {
     id: 'cg',
@@ -192,11 +192,11 @@ export const GLOSSARY_ENTRIES: GlossaryEntry[] = [
     detail: 'D-term provides damping in PID tuning. Soft-mounted components provide physical damping.',
   },
   {
-    id: 'dynamic-idle',
-    term: 'Dynamic idle',
+    id: 'd-boost',
+    term: 'D-Boost',
     category: 'concepts',
-    explanation: 'A Betaflight feature that raises motor idle speed when the quad needs more control authority at low throttle.',
-    detail: 'Helps prevent desync and improves stability during descents and inverted maneuvers.',
+    explanation: 'D-Boost (Cross-axis Derivative) — INAV feature that adds D-term correction based on rotation rate changes on other axes.',
+    detail: 'Helps reduce propwash and improve stability during aggressive maneuvers by providing additional damping.',
   },
   {
     id: 'q-factor',

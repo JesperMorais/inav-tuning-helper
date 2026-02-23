@@ -5,7 +5,7 @@ import { generateId } from '../utils/generateId'
 
 /**
  * Dedicated CG offset detection during hover.
- * Groups motors into diagonal pairs per Betaflight motor numbering convention
+ * Groups motors into diagonal pairs per INAV motor numbering convention
  * (motors 1+4 vs 2+3) and flags if one pair consistently works harder.
  */
 export const CgOffsetRule: TuningRule = {
@@ -40,7 +40,7 @@ export const CgOffsetRule: TuningRule = {
     const n = windowFrames.length
     const motorAvgs = motorSums.map(s => s / n)
 
-    // Diagonal pairs per BF motor numbering: pair A = motors 0+3, pair B = motors 1+2
+    // Diagonal pairs per INAV motor numbering: pair A = motors 0+3, pair B = motors 1+2
     const pairAAvg = (motorAvgs[0] + motorAvgs[3]) / 2
     const pairBAvg = (motorAvgs[1] + motorAvgs[2]) / 2
     const overallAvg = (pairAAvg + pairBAvg) / 2

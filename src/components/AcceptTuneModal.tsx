@@ -359,12 +359,12 @@ export const AcceptTuneModal = observer(({
               directly to your flight controller via USB and saves your tune
               for the next session.{' '}
               <strong>Accept</strong> saves your tune without writing &mdash;
-              copy and paste the commands into Betaflight CLI yourself.
+              copy and paste the commands into INAV CLI yourself.
             </BodyText>
           ) : (
             <BodyText>
               <strong>Accept</strong> saves your tune for the next session.
-              Copy the commands above and paste them into the Betaflight CLI
+              Copy the commands above and paste them into the INAV CLI
               to apply the changes to your FC.
             </BodyText>
           )}

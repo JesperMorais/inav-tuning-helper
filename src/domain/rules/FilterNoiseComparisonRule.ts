@@ -38,8 +38,8 @@ export const FilterNoiseComparisonRule: TuningRule = {
     const filterSettings = metadata?.filterSettings
     if (!filterSettings) return []
 
-    const gyroLpfCutoff = filterSettings.gyroLpf1Cutoff
-    const dtermLpfCutoff = filterSettings.dtermLpf1Cutoff
+    const gyroLpfCutoff = filterSettings.gyroMainLpfHz
+    const dtermLpfCutoff = filterSettings.dtermLpfHz
     if (gyroLpfCutoff === undefined && dtermLpfCutoff === undefined) return []
 
     const windowFrames = window.frameIndices.map(i => frames[i])
@@ -121,7 +121,7 @@ export const FilterNoiseComparisonRule: TuningRule = {
 
       if (direction === 'over') {
         // Over-filtering: cutoff is too low, cutting useful signal
-        const increase = Math.min(20, Math.round((suggestedCutoff - currentCutoff) / 10) * 5)
+        const increasePercent = Math.min(20, Math.round((suggestedCutoff - currentCutoff) / currentCutoff * 100 / 5) * 5)
         recommendations.push({
           id: generateId(),
           issueId: issue.id,
@@ -138,18 +138,18 @@ export const FilterNoiseComparisonRule: TuningRule = {
           ],
           changes: [
             {
-              parameter: 'gyroFilterMultiplier',
-              recommendedChange: `+${increase}`,
-              explanation: `Raise gyro filter multiplier to reduce latency (noise onset at ${Math.round(suggestedCutoff)} Hz)`,
+              parameter: 'gyroMainLpfHz',
+              recommendedChange: `+${increasePercent}%`,
+              explanation: `Raise gyro LPF cutoff to reduce latency (noise onset at ${Math.round(suggestedCutoff)} Hz)`,
             },
           ],
           expectedImprovement: 'Reduced filter delay, more responsive tracking',
         })
       } else if (direction === 'under') {
         // Under-filtering: significant noise above cutoff
-        const decrease = Math.min(20, Math.round(Math.abs(currentCutoff - suggestedCutoff) / 10) * 5)
+        const decreasePercent = Math.min(20, Math.round(Math.abs(currentCutoff - suggestedCutoff) / currentCutoff * 100 / 5) * 5)
         const isGyro = issue.description.includes('Gyro')
-        const parameter = isGyro ? 'gyroFilterMultiplier' : 'dtermFilterMultiplier'
+        const parameter = isGyro ? 'gyroMainLpfHz' : 'dtermLpfHz'
         const label = isGyro ? 'gyro' : 'D-term'
 
         recommendations.push({
@@ -161,7 +161,7 @@ export const FilterNoiseComparisonRule: TuningRule = {
           title: `Lower ${label} filter — noise above ${Math.round(currentCutoff)} Hz`,
           description: `Significant noise energy above the ${label} LPF cutoff (${Math.round(currentCutoff)} Hz) — filter is not blocking enough`,
           rationale:
-            `The noise spectrum shows substantial energy above the configured ${label} LPF cutoff. Lowering the filter multiplier will block more of this noise.`,
+            `The noise spectrum shows substantial energy above the configured ${label} LPF cutoff. Lowering the cutoff frequency will block more of this noise.`,
           risks: [
             'Adds phase delay which may reduce responsiveness',
             'May feel "mushy" if overdone',
@@ -169,8 +169,8 @@ export const FilterNoiseComparisonRule: TuningRule = {
           changes: [
             {
               parameter,
-              recommendedChange: `-${decrease}`,
-              explanation: `Lower ${label} filter multiplier to block noise above ${Math.round(currentCutoff)} Hz`,
+              recommendedChange: `-${decreasePercent}%`,
+              explanation: `Lower ${label} LPF cutoff to block noise above ${Math.round(currentCutoff)} Hz`,
             },
           ],
           expectedImprovement: 'Quieter motors, reduced noise-driven motor heat',

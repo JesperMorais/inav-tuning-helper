@@ -13,7 +13,7 @@
  */
 import type { SerialConnection } from './SerialPort'
 
-/* ---- MSP command constants (decimal, per Betaflight msp_protocol.h) ---- */
+/* ---- MSP command constants (decimal, per INAV/Betaflight msp_protocol.h) ---- */
 
 export const MSP_API_VERSION = 1
 export const MSP_DATAFLASH_SUMMARY = 70

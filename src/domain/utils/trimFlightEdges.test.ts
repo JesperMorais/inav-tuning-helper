@@ -23,7 +23,7 @@ function makeFrame(timeUs: number): LogFrame {
 function makeMetadata(overrides: Partial<LogMetadata> = {}): LogMetadata {
   return {
     firmwareVersion: '4.4.0',
-    firmwareType: 'Betaflight',
+    firmwareType: 'INAV',
     looptime: 8000,
     gyroRate: 8000,
     motorCount: 4,

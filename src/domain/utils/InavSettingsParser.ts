@@ -1,4 +1,4 @@
-import { CLI_OPTIONS } from '../../lib/betaflight/cliOptions'
+import { CLI_OPTIONS } from '../../lib/inav/cliOptions'
 
 export interface ParsedSettings {
   values: Map<string, number>
@@ -13,17 +13,17 @@ export interface ParsedSettings {
 const NOISE_PATTERN = /^\s*(#|Allowed range:|Default value:|Array length:|Permitted values:)/i
 
 /**
- * Matches both `get` output (`p_roll = 45`) and `dump`/`diff all` output (`set p_roll = 45`).
+ * Matches both `get` output (`mc_p_roll = 45`) and `dump`/`diff all` output (`set mc_p_roll = 45`).
  * Also handles section headers like `# master`, `# profile`, etc.
  */
 const SETTING_PATTERN = /^\s*(?:set\s+)?([a-z_][a-z0-9_]*)\s*=\s*(.+)$/i
 
 /**
- * Parse Betaflight CLI output (get, dump, or diff all) into numeric settings.
+ * Parse INAV CLI output (get, dump, or diff all) into numeric settings.
  * Non-numeric values (enums, strings, arrays) are silently skipped since
  * the app only needs numeric tuning parameters.
  */
-export function parseBetaflightOutput(text: string): ParsedSettings {
+export function parseInavOutput(text: string): ParsedSettings {
   const values = new Map<string, number>()
   const warnings: string[] = []
   let parsedCount = 0

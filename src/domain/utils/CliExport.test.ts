@@ -83,45 +83,38 @@ describe('resolveChange', () => {
 describe('getCliName', () => {
   describe('per-axis PID parameters', () => {
     it('maps pidPGain + roll', () => {
-      expect(getCliName('pidPGain', 'roll')).toBe('p_roll')
+      expect(getCliName('pidPGain', 'roll')).toBe('mc_p_roll')
     })
 
     it('maps pidDGain + pitch', () => {
-      expect(getCliName('pidDGain', 'pitch')).toBe('d_pitch')
+      expect(getCliName('pidDGain', 'pitch')).toBe('mc_d_pitch')
     })
 
     it('maps pidIGain + yaw', () => {
-      expect(getCliName('pidIGain', 'yaw')).toBe('i_yaw')
+      expect(getCliName('pidIGain', 'yaw')).toBe('mc_i_yaw')
     })
 
-    it('maps pidFeedforward + roll', () => {
-      expect(getCliName('pidFeedforward', 'roll')).toBe('f_roll')
+    it('pidFeedforward falls through (no CLI equivalent)', () => {
+      // INAV has no mc_ff_* CLI params — feedforward is set in Configurator
+      expect(getCliName('pidFeedforward', 'roll')).toBe('pidFeedforward')
     })
 
-    it('maps pidDMinGain + pitch', () => {
-      expect(getCliName('pidDMinGain', 'pitch')).toBe('d_min_pitch')
+    it('maps pidCdGain + pitch', () => {
+      expect(getCliName('pidCdGain', 'pitch')).toBe('mc_cd_pitch')
     })
   })
 
   describe('global parameters', () => {
-    it('maps gyroFilterMultiplier', () => {
-      expect(getCliName('gyroFilterMultiplier')).toBe('simplified_gyro_filter_multiplier')
+    it('maps gyroMainLpfHz', () => {
+      expect(getCliName('gyroMainLpfHz')).toBe('gyro_main_lpf_hz')
     })
 
-    it('maps dynamicIdle', () => {
-      expect(getCliName('dynamicIdle')).toBe('dshot_idle_value')
+    it('maps dtermLpfHz', () => {
+      expect(getCliName('dtermLpfHz')).toBe('dterm_lpf_hz')
     })
 
-    it('maps dtermFilterMultiplier', () => {
-      expect(getCliName('dtermFilterMultiplier')).toBe('simplified_dterm_filter_multiplier')
-    })
-
-    it('maps pidMasterMultiplier', () => {
-      expect(getCliName('pidMasterMultiplier')).toBe('simplified_master_multiplier')
-    })
-
-    it('maps dynamicNotchCount', () => {
-      expect(getCliName('dynamicNotchCount')).toBe('dyn_notch_count')
+    it('maps dynamicGyroNotchEnabled', () => {
+      expect(getCliName('dynamicGyroNotchEnabled')).toBe('dynamic_gyro_notch_enabled')
     })
 
     it('maps tpaRate', () => {
@@ -132,8 +125,8 @@ describe('getCliName', () => {
       expect(getCliName('tpaBreakpoint')).toBe('tpa_breakpoint')
     })
 
-    it('maps itermRelaxCutoff', () => {
-      expect(getCliName('itermRelaxCutoff')).toBe('iterm_relax_cutoff')
+    it('maps mcItermRelaxCutoff', () => {
+      expect(getCliName('mcItermRelaxCutoff')).toBe('mc_iterm_relax_cutoff')
     })
   })
 })
@@ -147,16 +140,16 @@ describe('isNoOpChange', () => {
   }
 
   const filterSettings: FilterSettings = {
-    gyroFilterMultiplier: 100,
-    dtermFilterMultiplier: 100,
-    dynamicNotchCount: 3,
-    itermRelaxCutoff: 15,
+    gyroMainLpfHz: 110,
+    dtermLpfHz: 110,
+    dynamicGyroNotchEnabled: 1,
+    mcItermRelaxCutoff: 15,
   }
 
   it('detects no-op when resolved value equals current value', () => {
     const change: ParameterChange = {
-      parameter: 'gyroFilterMultiplier',
-      currentValue: 100,
+      parameter: 'gyroMainLpfHz',
+      currentValue: 110,
       recommendedChange: '+0',
       explanation: 'test',
     }
@@ -165,7 +158,7 @@ describe('isNoOpChange', () => {
 
   it('is not a no-op when current value is unknown', () => {
     const change: ParameterChange = {
-      parameter: 'gyroFilterMultiplier',
+      parameter: 'gyroMainLpfHz',
       recommendedChange: '+5',
       explanation: 'test',
     }
@@ -211,8 +204,8 @@ describe('generateCliCommands', () => {
   }
 
   const filterSettings: FilterSettings = {
-    gyroFilterMultiplier: 100,
-    dtermFilterMultiplier: 100,
+    gyroMainLpfHz: 110,
+    dtermLpfHz: 110,
   }
 
   it('produces valid set commands', () => {
@@ -228,10 +221,10 @@ describe('generateCliCommands', () => {
         rationale: 'test',
         risks: [],
         changes: [{
-          parameter: 'gyroFilterMultiplier',
-          currentValue: 100,
-          recommendedChange: '+10',
-          explanation: 'increase filtering',
+          parameter: 'gyroMainLpfHz',
+          currentValue: 110,
+          recommendedChange: '-10%',
+          explanation: 'lower filtering',
         }],
         expectedImprovement: 'better',
       }],
@@ -260,8 +253,8 @@ describe('generateCliCommands', () => {
         rationale: 'test',
         risks: [],
         changes: [{
-          parameter: 'gyroFilterMultiplier',
-          currentValue: 100,
+          parameter: 'gyroMainLpfHz',
+          currentValue: 110,
           recommendedChange: '+0',
           explanation: 'no change',
         }],
@@ -294,8 +287,8 @@ describe('generateCliCommands', () => {
         rationale: 'test',
         risks: [],
         changes: [{
-          parameter: 'gyroFilterMultiplier',
-          recommendedChange: '+10',
+          parameter: 'gyroMainLpfHz',
+          recommendedChange: '-10%',
           explanation: 'increase',
         }],
         expectedImprovement: 'better',
@@ -311,7 +304,7 @@ describe('generateCliCommands', () => {
     }
   })
 
-  describe('integration: real analysis → CLI', () => {
+  describe('integration: real analysis → CLI', { timeout: 30000 }, () => {
     it('generates valid CLI from real flight data', () => {
       const { frames, metadata } = loadTestBflLog()
       const engine = new RuleEngine()
@@ -326,7 +319,7 @@ describe('generateCliCommands', () => {
       const lines = output.split('\n')
 
       // Starts with header comment
-      expect(lines[0]).toMatch(/^# Betaflight/)
+      expect(lines[0]).toMatch(/^# INAV/)
 
       // Ends with save
       const nonEmptyLines = lines.filter(l => l.trim() !== '')

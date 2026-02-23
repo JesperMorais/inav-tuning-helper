@@ -86,61 +86,33 @@ export const FeedforwardNoiseRule: TuningRule = {
       if (issue.type !== 'feedforwardNoise') continue
 
       const ffRMS = issue.metrics.feedforwardRMS || 0
-      const isSevere = issue.severity === 'high'
+      const ffReduction = issue.severity === 'high' ? '-15%' : issue.severity === 'medium' ? '-10%' : '-5%'
 
-      // Primary: increase jitter factor — suppresses RC noise from FF
-      const jitterTarget = isSevere ? '12' : '10'
+      // Primary: reduce feedforward gain to lower noise
       recommendations.push({
         id: generateId(),
         issueId: issue.id,
         type: 'adjustFeedforward',
         priority: 8,
         confidence: issue.confidence,
-        title: `Increase FF jitter factor on ${issue.axis}`,
-        description: 'RC link noise is leaking through feedforward — increase jitter suppression',
+        title: `Reduce Feedforward on ${issue.axis}`,
+        description: 'RC link noise is leaking through feedforward — reduce feedforward gain',
         rationale:
-          `Feedforward shows ${ffRMS.toFixed(1)}°/s RMS during steady sticks (should be <2). The jitter factor filters out small RC input changes that are noise rather than intentional stick movement.`,
+          `Feedforward shows ${ffRMS.toFixed(1)}°/s RMS during steady sticks (should be <2). Reducing the feedforward gain lowers the noise amplitude at the cost of slightly less proactive stick tracking.`,
         risks: [
-          'Very high jitter factor may slightly delay FF response to fast stick inputs',
-          'May mask genuine small stick corrections',
+          'Reduced feedforward may increase tracking lag during active flying',
+          'May feel less responsive on initial stick inputs',
         ],
         changes: [
           {
-            parameter: 'feedforwardJitterFactor',
-            recommendedChange: jitterTarget,
-            explanation: `Set jitter factor to ${jitterTarget} to suppress RC noise in feedforward`,
+            parameter: 'pidFeedforward',
+            recommendedChange: ffReduction,
+            axis: issue.axis,
+            explanation: `Reduce feedforward gain to suppress RC noise (${ffRMS.toFixed(1)}°/s RMS during steady sticks)`,
           },
         ],
         expectedImprovement: 'Cleaner feedforward signal, quieter motors during calm flight',
       })
-
-      // Secondary: increase smooth factor (medium+ severity only)
-      if (issue.severity !== 'low') {
-        const smoothTarget = isSevere ? '45' : '35'
-        recommendations.push({
-          id: generateId(),
-          issueId: issue.id,
-          type: 'adjustFeedforward',
-          priority: 6,
-          confidence: issue.confidence * 0.85,
-          title: `Increase FF smooth factor on ${issue.axis}`,
-          description: 'Additional feedforward smoothing to reduce noise',
-          rationale:
-            'The smooth factor applies a lowpass-style filter to the feedforward signal, reducing high-frequency noise that jitter factor alone may not catch.',
-          risks: [
-            'Adds slight delay to feedforward response',
-            'May reduce the "snappy" feel on quick stick inputs',
-          ],
-          changes: [
-            {
-              parameter: 'feedforwardSmoothFactor',
-              recommendedChange: smoothTarget,
-              explanation: `Set smooth factor to ${smoothTarget} for additional FF noise reduction`,
-            },
-          ],
-          expectedImprovement: 'Further reduced FF noise with minimal tracking impact',
-        })
-      }
     }
 
     if (metadata) {

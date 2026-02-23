@@ -389,10 +389,10 @@ export const SettingsImportModal = observer(() => {
               <StepSection>
                 <StepLabel>
                   <StepNumber>1</StepNumber>
-                  Copy this script into Betaflight CLI
+                  Copy this script into INAV CLI
                 </StepLabel>
                 <StepDescription>
-                  Connect to Betaflight CLI and paste this script to read your current values.
+                  Connect to INAV CLI and paste this script to read your current values.
                 </StepDescription>
                 <ScriptTextarea
                   readOnly
@@ -421,12 +421,12 @@ export const SettingsImportModal = observer(() => {
                   Paste the CLI output here
                 </StepLabel>
                 <StepDescription>
-                  Copy the output from Betaflight CLI and paste it below.
+                  Copy the output from INAV CLI and paste it below.
                 </StepDescription>
                 <ScriptTextarea
                   value={pasteText}
                   onChange={e => setPasteText(e.target.value)}
-                  placeholder="Paste Betaflight CLI output here..."
+                  placeholder="Paste INAV CLI output here..."
                   data-testid="settings-paste-textarea"
                 />
                 <HintText>

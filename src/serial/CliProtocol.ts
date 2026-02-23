@@ -1,5 +1,5 @@
 /**
- * Betaflight CLI protocol handler.
+ * INAV CLI protocol handler.
  * Sends text commands over a SerialConnection and parses responses.
  */
 import type { SerialConnection } from './SerialPort'
@@ -21,7 +21,7 @@ export interface WriteResult {
 }
 
 /**
- * Enter Betaflight CLI mode by sending '#' and waiting for the prompt.
+ * Enter INAV CLI mode by sending '#' and waiting for the prompt.
  */
 export async function enterCliMode(connection: SerialConnection): Promise<void> {
   await connection.write(CLI_ENTER)
@@ -58,7 +58,7 @@ export async function* sendCommands(
 
 /**
  * Read settings from the FC by sending get commands from the generated script.
- * Returns the concatenated CLI output suitable for BetaflightSettingsParser.
+ * Returns the concatenated CLI output suitable for InavSettingsParser.
  */
 export async function readSettings(
   connection: SerialConnection,
@@ -100,7 +100,7 @@ export async function writeSettings(
 
   for await (const result of sendCommands(connection, commands)) {
     commandsSent++
-    // Betaflight returns "Invalid" or "Error" for bad set commands
+    // INAV returns "Invalid" or "Error" for bad set commands
     if (/invalid|error/i.test(result.response)) {
       errors.push(`${result.command}: ${result.response.trim()}`)
     }

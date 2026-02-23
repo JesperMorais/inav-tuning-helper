@@ -207,57 +207,50 @@ export type RecommendationType =
   | 'increasePID'
   | 'decreasePID'
   | 'adjustFiltering'
-  | 'adjustDynamicIdle'
   | 'adjustTPA'
-  | 'adjustRPMFilter'
-  | 'adjustMasterMultiplier'
   | 'adjustFeedforward'
   | 'hardwareCheck'
 
 /**
- * Specific parameter change using Betaflight simplified tuning parameters
+ * Specific parameter change using INAV tuning parameters
  */
 export interface ParameterChange {
-  parameter: BetaflightParameter
+  parameter: InavParameter
   currentValue?: number
   recommendedChange: string // e.g., "+0.3", "-5%", "32"
   axis?: Axis
   explanation: string
 }
 
-export type BetaflightParameter =
-  // PID gain multipliers (0-200, default 100)
-  | 'pidMasterMultiplier'
+export type InavParameter =
+  // PID gains (direct values, not multipliers)
   | 'pidPGain'
   | 'pidIGain'
   | 'pidDGain'
-  | 'pidDMinGain'
   | 'pidFeedforward'
+  | 'pidCdGain'         // D-boost (cross-axis D-term)
 
-  // Filter multipliers
-  | 'gyroFilterMultiplier' // (0-200, default 100)
-  | 'dtermFilterMultiplier' // (0-200, default 100)
+  // Gyro filters
+  | 'gyroMainLpfHz'         // gyro_main_lpf_hz
+  | 'gyroDynLpfMinHz'       // gyro_dyn_lpf_min_hz
+  | 'gyroDynLpfMaxHz'       // gyro_dyn_lpf_max_hz
 
-  // Dynamic notch
-  | 'dynamicNotchCount'
-  | 'dynamicNotchQ'
-  | 'dynamicNotchMinHz'
-  | 'dynamicNotchMaxHz'
+  // D-term filter
+  | 'dtermLpfHz'             // dterm_lpf_hz
 
-  // RPM filter
-  | 'rpmFilterHarmonics'
-  | 'rpmFilterMinHz'
+  // Dynamic gyro notch
+  | 'dynamicGyroNotchEnabled'  // dynamic_gyro_notch_enabled (ON/OFF → 1/0)
+  | 'dynamicGyroNotchQ'        // dynamic_gyro_notch_q
+  | 'dynamicGyroNotchMinHz'    // dynamic_gyro_notch_min_hz
 
-  // Feedforward
-  | 'feedforwardTransition'    // feedforward_transition (0-100)
-  | 'feedforwardJitterFactor'  // feedforward_jitter_factor (0-20)
-  | 'feedforwardSmoothFactor'  // feedforward_smooth_factor (0-95)
+  // Gyro adaptive filter (INAV 9+)
+  | 'gyroAdaptiveFilterMinHz'  // gyro_adaptive_filter_min_hz
+  | 'gyroAdaptiveFilterMaxHz'  // gyro_adaptive_filter_max_hz
 
   // Other
-  | 'dynamicIdle'
   | 'tpaRate'
   | 'tpaBreakpoint'
-  | 'itermRelaxCutoff'
+  | 'mcItermRelaxCutoff'     // mc_iterm_relax_cutoff
 
 /**
  * Analysis results for entire log

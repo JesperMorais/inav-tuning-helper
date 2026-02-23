@@ -45,8 +45,8 @@ test.describe('Navigation — Segments', () => {
 
   test('header and footer are visible', async ({ page }) => {
     await expect(page.getByTestId('app-header')).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Betaflight Tuning Helper' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'INAV Tuning Helper' })).toBeVisible()
     await expect(page.locator('footer')).toBeVisible()
-    await expect(page.locator('footer')).toContainText('Betaflight')
+    await expect(page.locator('footer')).toContainText('INAV')
   })
 })
